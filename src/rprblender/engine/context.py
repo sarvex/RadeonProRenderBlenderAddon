@@ -182,8 +182,7 @@ class RPRContext:
         if self.is_aov_enabled(aov_type):
             return
 
-        fbs = {}
-        fbs['aov'] = pyrpr.FrameBuffer(self.context, self.width, self.height)
+        fbs = {'aov': pyrpr.FrameBuffer(self.context, self.width, self.height)}
         fbs['aov'].set_name("%d_aov" % aov_type)
         self.context.attach_aov(aov_type, fbs['aov'])
         if aov_type == pyrpr.AOV_COLOR and self.gl_interop:
@@ -292,10 +291,6 @@ class RPRContext:
             self.enable_aov(pyrpr.AOV_REFLECTION_CATCHER)
 
     def create_filter_composite(self):
-        # Experimentally found the max value of shadow catcher,
-        # we'll need it to normalize shadow catcher AOV
-        SHADOW_CATCHER_MAX_VALUE = 2.0
-
         # Composite frame buffer
         self.frame_buffers_aovs[pyrpr.AOV_COLOR]['composite'] = pyrpr.FrameBuffer(
             self.context, self.width, self.height)
@@ -313,13 +308,12 @@ class RPRContext:
             'framebuffer.input': self.frame_buffers_aovs[pyrpr.AOV_OPACITY]['res']
         }).get_channel(0)
         full_alpha = alpha
-        if self.use_reflection_catcher or self.use_shadow_catcher:
-            if self.use_reflection_catcher:
-                reflection_catcher = self.create_composite(pyrpr.COMPOSITE_FRAMEBUFFER, {
-                    'framebuffer.input': self.frame_buffers_aovs[pyrpr.AOV_REFLECTION_CATCHER][
-                        'res']
-                }).get_channel(0)
-                full_alpha += reflection_catcher
+        if self.use_reflection_catcher:
+            reflection_catcher = self.create_composite(pyrpr.COMPOSITE_FRAMEBUFFER, {
+                'framebuffer.input': self.frame_buffers_aovs[pyrpr.AOV_REFLECTION_CATCHER][
+                    'res']
+            }).get_channel(0)
+            full_alpha += reflection_catcher
 
             background = self.create_composite(pyrpr.COMPOSITE_FRAMEBUFFER, {
                 'framebuffer.input': self.frame_buffers_aovs[pyrpr.AOV_BACKGROUND]['res']
@@ -327,20 +321,31 @@ class RPRContext:
 
             self.composite = background * (1.0 - full_alpha) + color * full_alpha
 
-            if self.use_shadow_catcher:
-                shadow_catcher = self.create_composite(pyrpr.COMPOSITE_FRAMEBUFFER, {
-                    'framebuffer.input': self.frame_buffers_aovs[pyrpr.AOV_SHADOW_CATCHER]['res']
-                }).get_channel(0)
-                shadow_catcher_norm = (shadow_catcher / SHADOW_CATCHER_MAX_VALUE).min(1.0)
+        elif self.use_shadow_catcher:
+            background = self.create_composite(pyrpr.COMPOSITE_FRAMEBUFFER, {
+                'framebuffer.input': self.frame_buffers_aovs[pyrpr.AOV_BACKGROUND]['res']
+            })
 
-                self.composite *= (1.0 - shadow_catcher_norm) * (1.0, 1.0, 1.0, 0.0) + \
-                                  (0.0, 0.0, 0.0, 1.0)
-
-                if self.use_transparent_background:
-                    full_alpha = (full_alpha + shadow_catcher_norm).min(1.0)
+            self.composite = background * (1.0 - full_alpha) + color * full_alpha
 
         else:
             self.composite = color
+
+        if self.use_shadow_catcher:
+            shadow_catcher = self.create_composite(pyrpr.COMPOSITE_FRAMEBUFFER, {
+                'framebuffer.input': self.frame_buffers_aovs[pyrpr.AOV_SHADOW_CATCHER]['res']
+            }).get_channel(0)
+            # Experimentally found the max value of shadow catcher,
+            # we'll need it to normalize shadow catcher AOV
+            SHADOW_CATCHER_MAX_VALUE = 2.0
+
+            shadow_catcher_norm = (shadow_catcher / SHADOW_CATCHER_MAX_VALUE).min(1.0)
+
+            self.composite *= (1.0 - shadow_catcher_norm) * (1.0, 1.0, 1.0, 0.0) + \
+                                  (0.0, 0.0, 0.0, 1.0)
+
+            if self.use_transparent_background:
+                full_alpha = (full_alpha + shadow_catcher_norm).min(1.0)
 
         if self.use_transparent_background:
             self.composite = full_alpha * ((0.0, 0.0, 0.0, 1.0) + self.composite * (1.0, 1.0, 1.0, 0.0))
@@ -386,7 +391,11 @@ class RPRContext:
         if not light:
             return
 
-        portals = set(obj for obj in self.scene.objects if isinstance(obj, pyrpr.Shape) and obj.is_portal_light)
+        portals = {
+            obj
+            for obj in self.scene.objects
+            if isinstance(obj, pyrpr.Shape) and obj.is_portal_light
+        }
         # detach disabled portals
         for obj in light.portals - portals:
             light.detach_portal(self.scene, obj)
@@ -562,11 +571,14 @@ class RPRContext:
         self.remove_volumes(key)
 
         if isinstance(obj, pyrpr.Mesh):
-            # checking if object has direct instances,
-            # in this case we don't remove/detach object, just hiding it
-            has_instances = next((True for o in self.objects.values()
-                                       if isinstance(o, pyrpr.Instance) and o.mesh is obj), False)
-            if has_instances:
+            if has_instances := next(
+                (
+                    True
+                    for o in self.objects.values()
+                    if isinstance(o, pyrpr.Instance) and o.mesh is obj
+                ),
+                False,
+            ):
                 obj.set_visibility(False)
                 return
 
@@ -669,9 +681,7 @@ class RPRContext2(RPRContext):
         self.context.set_time_callback(callback_type, func)
 
     def create_tiled_image(self, key):
-        image = pyrpr2.TiledImage(self.context)
-
-        return image
+        return pyrpr2.TiledImage(self.context)
 
     def sync_portal_lights(self):
         # portals are not supported or needed in rpr2

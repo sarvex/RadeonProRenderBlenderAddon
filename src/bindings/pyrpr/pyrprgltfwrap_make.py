@@ -34,11 +34,18 @@ api = pyrprapi.load(api_desc_fpath)
 def format_arg_decl(arg, default):
     if default is None:
         return arg
-    return arg + '=' + ({'false': 'False', 'true': 'True'}.get(default, default))
+    return f'{arg}=' + ({'false': 'False', 'true': 'True'}.get(default, default))
 
 
 def print_function_header(name, args_names, args_defaults, doc):
-    print('def', name + '(' + ', '.join(format_arg_decl(a, d) for a, d, in zip(args_names, args_defaults)) + '):')
+    print(
+        'def',
+        f'{name}('
+        + ', '.join(
+            format_arg_decl(a, d) for a, d, in zip(args_names, args_defaults)
+        )
+        + '):',
+    )
     if doc:
         c_decl, comment = doc
         print('    """ C/C++:', c_decl)
@@ -89,9 +96,9 @@ for name, t in api.functions.items():
     def get_arg(arg, replaced):
         if not replaced:
             return arg
-        if 'value' == replaced:
+        if replaced == 'value':
             return '{0}._get_handle() if {0} else ffi.NULL'.format(arg)
-        if 'pointer' == replaced:
+        if replaced == 'pointer':
             return '{0}._handle_ptr if {0} else ffi.NULL'.format(arg)
 
     prefix = 'rpr'

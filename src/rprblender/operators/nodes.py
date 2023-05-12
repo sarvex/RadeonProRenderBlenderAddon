@@ -50,7 +50,7 @@ def bake_nodes(node_tree, nodes, material, resolution, obj):
                 continue
 
             # create texture node if not already one
-            baked_texture_node_name = node.name + " Baked " + output.name
+            baked_texture_node_name = f"{node.name} Baked {output.name}"
             if hasattr(node, 'rpr_baked_node_name') \
                     and node.rpr_baked_node_name == baked_texture_node_name \
                     and node.rpr_baked_node_name in node_tree.nodes:
@@ -58,7 +58,7 @@ def bake_nodes(node_tree, nodes, material, resolution, obj):
             else:
                 texture_node = node_tree.nodes.new(type='ShaderNodeTexImage')
                 texture_node.location = [node.location[0], node.location[1] - node.height]
-                texture_node.name = node.name + " Baked " + output.name
+                texture_node.name = f"{node.name} Baked {output.name}"
 
                 # create input texture
                 image = bpy.data.images.new(name=texture_node.name, width=resolution, height=resolution)
@@ -93,7 +93,7 @@ def bake_nodes(node_tree, nodes, material, resolution, obj):
                 node.rpr_baked_node_name = texture_node.name
 
     # remove emission
-    node_tree.nodes.remove(emission_node)      
+    node_tree.nodes.remove(emission_node)
     if surface_node is not None:
         node_tree.links.new(surface_node.outputs[0], surface_socket)
 
@@ -129,11 +129,11 @@ class RPR_NODE_OP_bake_all_nodes(RPR_Operator):
                     if nt is None:
                         continue
 
-                    nodes_to_bake = []
-                    for node in nt.nodes:
-                        if not get_node_parser_class(node.bl_idname):
-                            nodes_to_bake.append(node)
-
+                    nodes_to_bake = [
+                        node
+                        for node in nt.nodes
+                        if not get_node_parser_class(node.bl_idname)
+                    ]
                     settings = get_user_settings()
                     resolution = settings.bake_resolution
 
@@ -228,7 +228,7 @@ class RPR_MATERIAL_OP_principled_to_uber(RPR_Operator):
         surface_socket = output_node.inputs['Surface']
 
         if surface_socket.is_linked and \
-                surface_socket.links[0].from_node.bl_idname == 'ShaderNodeBsdfPrincipled':
+                    surface_socket.links[0].from_node.bl_idname == 'ShaderNodeBsdfPrincipled':
             principled_node = surface_socket.links[0].from_node
         else:
             return {'FINISHED'}
@@ -242,7 +242,7 @@ class RPR_MATERIAL_OP_principled_to_uber(RPR_Operator):
 
         # connect uber node to output
         nt.links.new(surface_socket, uber_node.outputs[0])
-        
+
         def copy_input(original_socket, new_socket):
             if original_socket.is_linked:
                 original_link = original_socket.links[0]
@@ -255,7 +255,7 @@ class RPR_MATERIAL_OP_principled_to_uber(RPR_Operator):
             socket = principled_node.inputs[socket_name]
             if socket.is_linked:
                 return True
-            
+
             val = socket.default_value
 
             if val is None:
@@ -264,14 +264,12 @@ class RPR_MATERIAL_OP_principled_to_uber(RPR_Operator):
             if isinstance(val, float) and math.isclose(val, 0.0):
                 return False
 
-            if array_type and \
-               math.isclose(val[0], 0.0) and \
-               math.isclose(val[1], 0.0) and \
-               math.isclose(val[2], 0.0):
-                return False
-
-            return True
-
+            return (
+                not array_type
+                or not math.isclose(val[0], 0.0)
+                or not math.isclose(val[1], 0.0)
+                or not math.isclose(val[2], 0.0)
+            )
 
         # connect/set inputs
         # diffuse enabled already   uber_node.enable_diffuse = True
@@ -305,7 +303,7 @@ class RPR_MATERIAL_OP_principled_to_uber(RPR_Operator):
         if enabled('Normal'):
             uber_node.enable_normal = True
             copy_input(principled_node.inputs['Normal'], uber_node.inputs['Normal'])
-     
+
         # SSS
         if enabled('Subsurface'):
             # we don't handle max distance here
@@ -319,7 +317,7 @@ class RPR_MATERIAL_OP_principled_to_uber(RPR_Operator):
             uber_node.enable_emission = True
             uber_node.emission_doublesided = True
             copy_input(principled_node.inputs['Emission'], uber_node.inputs['Emission Color'])
-            
+
         if principled_node.inputs['Alpha'].default_value != 1.0:
             uber_node.enable_transparency = True
             invert_node = nt.nodes.new(type="ShaderNodeInvert")
@@ -342,7 +340,7 @@ class RPR_MATERIAL_OP_principled_to_uber(RPR_Operator):
             copy_input(principled_node.inputs['Transmission'], uber_node.inputs['Refraction Weight'])
             copy_input(principled_node.inputs['Base Color'], uber_node.inputs['Refraction Color'])
             copy_input(principled_node.inputs['Transmission Roughness'], uber_node.inputs['Refraction Roughness'])
-        
+
         return {'FINISHED'}
 
 
@@ -360,7 +358,7 @@ class Node(object):
         self.nodes = nodes
 
     def __repr__(self):
-        return "Node('{}')".format(self.node.name)
+        return f"Node('{self.node.name}')"
 
     def __getattr__(self, name):
         if name in ["x", "y"]:
@@ -368,9 +366,7 @@ class Node(object):
         if name in ["w", "h"]:
             name = "x" if name == "w" else "y"
             return getattr(self.node.dimensions, name)
-        if name == "idname":
-            return self.node.bl_idname
-        return getattr(self.node, name)
+        return self.node.bl_idname if name == "idname" else getattr(self.node, name)
 
     def __setattr__(self, name, value):
         if name in ["x", "y"]:
@@ -393,9 +389,11 @@ class Node(object):
     def arrange(self, margin_vertical, margin_horizontal):
         children = list(self.children)
         if len(children):
-            height = sum([child.h for child in children]) + margin_vertical * (len(children) - 1.0)
+            height = sum(child.h for child in children) + margin_vertical * (
+                len(children) - 1.0
+            )
             start_y = self.y - (self.h / 2.0) + height / 2.0
-            start_x = self.x - margin_horizontal - max([n.w for n in children])
+            start_x = self.x - margin_horizontal - max(n.w for n in children)
             for child in children:
                 if not child.pin:
                     child.y = start_y
@@ -458,7 +456,7 @@ class Nodes:
             roots.arrange(margin_vertical, margin_horizontal)
 
         self.set_levels()
-        levels = set(node.level for node in self._nodes.values())
+        levels = {node.level for node in self._nodes.values()}
         for l in levels:
             d = -l * margin_horizontal + self.roots[0].x
             for node in self.levels[l]:

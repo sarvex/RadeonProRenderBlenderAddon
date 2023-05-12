@@ -92,13 +92,10 @@ class BaseNodeParser(metaclass=ABCMeta):
         # check if this node was already parsed
         node_key = key(self.material_key, node, socket_out, group_nodes)
 
-        rpr_node = self.rpr_context.material_nodes.get(node_key, None)
-        if rpr_node:
+        if rpr_node := self.rpr_context.material_nodes.get(node_key, None):
             return rpr_node
 
-        # getting corresponded NodeParser class
-        node_parser_class = get_node_parser_class(node.bl_idname)
-        if node_parser_class:
+        if node_parser_class := get_node_parser_class(node.bl_idname):
             node_parser = node_parser_class(self.rpr_context, self.material, node, socket_out,
                                             group_nodes, data=self.data)
             return node_parser.final_export()
@@ -115,7 +112,7 @@ class BaseNodeParser(metaclass=ABCMeta):
         if isinstance(val, str):
             return val
 
-        if len(val) in (3, 4):
+        if len(val) in {3, 4}:
             return tuple(val)
 
         raise TypeError("Unknown value type to pass to rpr", val)
@@ -196,27 +193,18 @@ class BaseNodeParser(metaclass=ABCMeta):
         is_destination_shader = isinstance(destination, bpy.types.NodeSocketShader)
 
         # Linking shaders and non-shaders
-        if is_source_shader ^ is_destination_shader:
-            return False
-
-        return True
+        return not is_source_shader ^ is_destination_shader
 
     def get_input_value(self, socket_key):
         """ Returns linked node or default socket value """
 
         val = self.get_input_link(socket_key)
-        if val is not None:
-            return val
-
-        return self.get_input_default(socket_key)
+        return val if val is not None else self.get_input_default(socket_key)
 
     def get_input_scalar(self, socket_key):
         """ Parse link, accept only RPR core material nodes """
         val = self.get_input_link(socket_key, accepted_type=(float, tuple))
-        if val is not None:
-            return val
-
-        return self.get_input_default(socket_key)
+        return val if val is not None else self.get_input_default(socket_key)
 
     def create_node(self, material_type, inputs={}):
         rpr_node = self.rpr_context.create_material_node(material_type)
@@ -257,18 +245,16 @@ class BaseNodeParser(metaclass=ABCMeta):
         pass
 
     def export_muted(self):
-        # export as a muted node
-        typed_inputs = tuple(input for input in self.node.inputs
-                             if isinstance(input, type(self.socket_out)))
-        if typed_inputs:
+        if typed_inputs := tuple(
+            input
+            for input in self.node.inputs
+            if isinstance(input, type(self.socket_out))
+        ):
             input = next((input for input in typed_inputs if input.is_linked), None)
         else:
             input = next((input for input in self.node.inputs if input.is_linked), None)
 
-        if not input:
-            return None
-
-        return self.get_input_link(input.name)
+        return None if not input else self.get_input_link(input.name)
 
     def final_export(self):
         """
@@ -277,12 +263,8 @@ class BaseNodeParser(metaclass=ABCMeta):
         """
 
         log("export", self.material, self.node, self.socket_out, self.group_nodes)
-        
-        if self.node.mute:
-            rpr_node = self.export_muted()
-        else:
-            rpr_node = self.export()
 
+        rpr_node = self.export_muted() if self.node.mute else self.export()
         if isinstance(rpr_node, pyrpr.MaterialNode):
             node_key = key(self.material_key, self.node, self.socket_out, self.group_nodes)
             self.rpr_context.set_material_node_key(node_key, rpr_node)
@@ -349,10 +331,7 @@ class NodeParser(BaseNodeParser):
 
     def get_input_link(self, socket_key, accepted_type=None) -> [NodeItem, None]:
         val = super().get_input_link(socket_key, accepted_type)
-        if val is None:
-            return None
-
-        return self.node_item(val)
+        return None if val is None else self.node_item(val)
 
     def create_node(self, material_type, inputs={}) -> NodeItem:
         val = super().create_node(material_type)
@@ -505,7 +484,7 @@ class RuleNodeParser(NodeParser):
     def export_hybrid(self):
         """ Looking for base node_rule_key = 'hybrid:<socket_out.name> """
 
-        node_rule_key = 'hybrid:' + self.socket_out.name
+        node_rule_key = f'hybrid:{self.socket_out.name}'
         if node_rule_key in self.nodes:
             return self._export_node_rule_by_key(node_rule_key)
 
@@ -514,7 +493,7 @@ class RuleNodeParser(NodeParser):
     def export_hybridpro(self):
         """ Looking for base node_rule_key = 'hybridpro:<socket_out.name> """
 
-        node_rule_key = 'hybridpro:' + self.socket_out.name
+        node_rule_key = f'hybridpro:{self.socket_out.name}'
         if node_rule_key in self.nodes:
             return self._export_node_rule_by_key(node_rule_key)
 
@@ -525,13 +504,11 @@ def get_node_parser_class(node_idname: str):
     """ Returns NodeParser class for node_idname or None if not found """
 
     from . import blender_nodes
-    parser_class = getattr(blender_nodes, node_idname, None)
-    if parser_class:
+    if parser_class := getattr(blender_nodes, node_idname, None):
         return parser_class
 
     from . import rpr_nodes
-    rpr_shader_node = getattr(rpr_nodes, node_idname, None)
-    if rpr_shader_node:
+    if rpr_shader_node := getattr(rpr_nodes, node_idname, None):
         return rpr_shader_node.Exporter
 
     return None

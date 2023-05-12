@@ -224,11 +224,11 @@ class RPR_RENDER_PT_advanced(RPR_Panel):
         self.layout.use_property_decorate = False
 
         rpr = context.scene.rpr
-        limits = rpr.limits
-
         if rpr.final_render_mode == 'FULL2':
             col = self.layout.column(align=True)
             row = col.row(align=True)
+            limits = rpr.limits
+
             row.prop(limits, 'seed')
             row.prop(limits, 'anim_seed', text="", icon='TIME')
 

@@ -45,8 +45,7 @@ class CoreError(Exception):
         self.error_message = self.get_last_error_message()
 
     def __str__(self):
-        return "%s call %s(%s) returned error code <%s> with error message: '%s'" % \
-                    (self.module_name, self.func_name, ', '.join(str(a) for a in self.argv), self.status, self.error_message)
+        return f"{self.module_name} call {self.func_name}({', '.join(str(a) for a in self.argv)}) returned error code <{self.status}> with error message: '{self.error_message}'"
 
     @staticmethod
     def get_last_error_message():
@@ -81,12 +80,19 @@ def wrap_core_log_call(f, log_fun, module_name):
 
     @functools.wraps(f)
     def wrapped(*argv):
-        log_fun(module_name+'::'+f.__name__, ', '.join(p.name+': '+str(value) for p, value in zip(signature.parameters.values(), argv)))
+        log_fun(
+            f'{module_name}::{f.__name__}',
+            ', '.join(
+                f'{p.name}: {str(value)}'
+                for p, value in zip(signature.parameters.values(), argv)
+            ),
+        )
         time_begin = time.perf_counter()
         result = f(*argv)
         time_end = time.perf_counter()
-        log_fun(module_name+'::'+f.__name__, "done in ", time_end-time_begin)
+        log_fun(f'{module_name}::{f.__name__}', "done in ", time_end-time_begin)
         return result
+
     return wrapped
 
 
@@ -145,11 +151,10 @@ def decode(bin_str):
 
 
 def is_gpu_enabled(creation_flags):
-    for i in range(16):
-        if getattr(pyrprwrap, 'CREATION_FLAGS_ENABLE_GPU%d' % i) & creation_flags:
-            return True
-
-    return False
+    return any(
+        getattr(pyrprwrap, 'CREATION_FLAGS_ENABLE_GPU%d' % i) & creation_flags
+        for i in range(16)
+    )
 
 
 def get_first_gpu_id_used(creation_flags):
@@ -164,7 +169,7 @@ class Object:
     core_type_name = 'void*'
 
     def __init__(self):
-        self._handle_ptr = ffi.new(self.core_type_name + '*', ffi.NULL)
+        self._handle_ptr = ffi.new(f'{self.core_type_name}*', ffi.NULL)
         self.name = None
 
     def __del__(self):
@@ -329,7 +334,7 @@ class Context(Object):
         return creation_flags[0]
 
     def get_info(self, context_info, str_type):
-        val = ffi.new('%s *' % str_type)
+        val = ffi.new(f'{str_type} *')
         ContextGetInfo(self, context_info, sys.getsizeof(val), val, ffi.NULL)
         return val[0]
 
@@ -619,11 +624,7 @@ class Curve(Object):
             dtype=np.float32
         ).reshape(-1, 3)
 
-        if uvs is None:
-            uvs_ptr = ffi.NULL
-        else:
-            uvs_ptr = ffi.cast("float *", uvs.ctypes.data)
-       
+        uvs_ptr = ffi.NULL if uvs is None else ffi.cast("float *", uvs.ctypes.data)
         segments_per_curve = curve_length // 4
         # create list of indices 0-control_points length
         indices = np.arange(len(points), dtype=np.uint32)
@@ -643,7 +644,7 @@ class Curve(Object):
 
         # create list of segments per curve num_segments = length / 4
         segments = np.full(num_curves, segments_per_curve, dtype=np.int32)
-        
+
         ContextCreateCurve(self.context, self,
             len(points), ffi.cast("float *", points.ctypes.data), points[0].nbytes,
             len(indices), num_curves,

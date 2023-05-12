@@ -217,8 +217,9 @@ def sync(rpr_context, emitter: bpy.types.Object):
         rpr_hair.set_name(str(hair_key))
         rpr_context.scene.attach(rpr_hair)
 
-        rpr_material = particle.get_particle_system_material(rpr_context, p_sys, emitter)
-        if rpr_material:
+        if rpr_material := particle.get_particle_system_material(
+            rpr_context, p_sys, emitter
+        ):
             rpr_hair.set_material(rpr_material)
 
         # hair uses world space
@@ -259,8 +260,9 @@ def sync_curves(rpr_context, obj: bpy.types.Object):
     if obj.material_slots:
         slot = obj.material_slots[0]
         if slot.material:
-            rpr_material = material.sync(rpr_context, slot.material, obj=obj)
-            if rpr_material:
+            if rpr_material := material.sync(
+                rpr_context, slot.material, obj=obj
+            ):
                 rpr_hair.set_material(rpr_material)
 
     transform = object.get_transform(obj)

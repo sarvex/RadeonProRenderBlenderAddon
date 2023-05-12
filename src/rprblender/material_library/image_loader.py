@@ -25,7 +25,7 @@ log = Log(tag="material_library")
 class MaterialImageLoader:
     """ Load images for material, copy it to scene file location if requested """
     def __init__(self, root_folder: str, material_folder: str, copy_locally=False):
-        self.is_os_windows = 'Windows' == platform.system()
+        self.is_os_windows = platform.system() == 'Windows'
         self.root_folder = ''.join(root_folder.split('Xml')[:-1])
         self.material_folder = material_folder
         self.copy_locally = copy_locally
@@ -35,11 +35,7 @@ class MaterialImageLoader:
         is_copy_allowed = self.copy_locally and bpy.path.abspath('//')  # copy enabled and scene is saved?
         is_path_relative = '\\' in file_name or '/' in file_name  # is texture in common folder?
 
-        if is_path_relative:
-            file_path = file_name.split("..")[-1]
-        else:
-            file_path = file_name
-
+        file_path = file_name.split("..")[-1] if is_path_relative else file_name
         separator = '/'
         if self.is_os_windows:  # on Windows use Windows path separator for correct work
             file_path = file_path.replace('/', '\\')
@@ -60,7 +56,7 @@ class MaterialImageLoader:
             path_full = self.material_folder + separator + file_path
             path_relative = os.path.basename(self.material_folder) + separator + file_path
 
-        path_relative = 'rprmaterials' + separator + path_relative
+        path_relative = f'rprmaterials{separator}{path_relative}'
 
         try:
             copied_image_path = self.copy_image(path_full, path_relative)

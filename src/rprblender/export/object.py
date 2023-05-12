@@ -59,10 +59,7 @@ def sync(rpr_context, obj: bpy.types.Object, **kwargs):
     elif obj.type == 'CURVES':
         hair.sync_curves(rpr_context, obj)
 
-    elif obj.type == 'EMPTY':
-        pass
-
-    else:
+    elif obj.type != 'EMPTY':
         log.warn("Object to sync not supported", obj, obj.type)
 
     if obj.type in ('MESH', 'CURVE', 'FONT', 'SURFACE', 'META'):

@@ -43,7 +43,7 @@ call_args = [
 ]
 
 if debugger:
-    print("Debugger: %s" % debugger)
+    print(f"Debugger: {debugger}")
     call_args.insert(0, debugger)
 
 subprocess.check_call(call_args)

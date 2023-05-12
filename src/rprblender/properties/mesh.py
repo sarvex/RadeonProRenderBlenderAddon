@@ -40,10 +40,7 @@ class RPR_MeshProperites(RPR_Properties):
 
     @property
     def primary_uv_name(self):
-        layer = self.primary_uv_layer
-        if layer:
-            return layer.name
-        return None
+        return layer.name if (layer := self.primary_uv_layer) else None
 
     def secondary_uv_layer(self, obj):
         """ Get the mesh secondary UV set if present """
@@ -52,8 +49,7 @@ class RPR_MeshProperites(RPR_Properties):
         if len(uv_layers) <= 1:
             return None
 
-        secondary_name = obj.original.data.rpr.secondary_uv_layer_name
-        if secondary_name:  # set is selected explicitly
+        if secondary_name := obj.original.data.rpr.secondary_uv_layer_name:
             return next((uv for uv in uv_layers if uv.name == secondary_name), None)
 
         # if no secondary UV specified use the first non-primary set

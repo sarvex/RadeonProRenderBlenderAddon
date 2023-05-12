@@ -38,7 +38,7 @@ class RPRXMLMaterialCompiler:
     def compile(self, node: ElementTree.Element) -> bpy.types.ShaderNode:
         """ Material parsing entry point - create and link nodes by XML info starting from closure """
         closure = self.compile_node(node)
-        log("closure node '{}' is '{}'".format(node, closure))
+        log(f"closure node '{node}' is '{closure}'")
         return closure
 
     def compile_node(self, node: ElementTree.Element, depth: int = 0, ignore_uv_lookup_node=False):
@@ -77,9 +77,10 @@ class RPRXMLMaterialCompiler:
                 continue
 
             # linked node
-            if 'connection' == connection_type:
-                linked_node = node_compiler.compile_input_node(input_name, input_value)
-                if linked_node:  # ignored nodes will return None, wrong will raise UnsupportedNode exception
+            if connection_type == 'connection':
+                if linked_node := node_compiler.compile_input_node(
+                    input_name, input_value
+                ):
                     self.link_node(linked_node, input_socket)
                 continue
 
@@ -119,7 +120,7 @@ class RPRXMLMaterialCompiler:
 
     def is_node_uv_lookup(self, node_info: ElementTree.Element):
         """ Check if this is "Lookup" node in "UV" mode; used to ignore UV Lookup attached to Image Texture nodes """
-        if not node_info.get('type') == 'INPUT_LOOKUP':
+        if node_info.get('type') != 'INPUT_LOOKUP':
             return False
         for param in node_info.iter(tag='param'):
             param_name = param.get('name')
@@ -160,21 +161,21 @@ class BasicNodeCompiler:
     @staticmethod
     def get_float4_as_float2(value: str):
         """ Get vector2 from string of vector4 """
-        return ast.literal_eval(value)[0:2]
+        return ast.literal_eval(value)[:2]
 
     @staticmethod
     def get_float4_as_float3(value: str):
         """ Get vector 3 from string of vector4 """
-        return ast.literal_eval(value)[0:3]
+        return ast.literal_eval(value)[:3]
 
     # compile methods
     def compile_input_node(self, socket_name: str, node_name: str):
         """ Compile linked node node_name and link to socket socket_name """
-        node_info = self.compiler.get_xml_node_info(node_name)
-        if not node_info:
+        if node_info := self.compiler.get_xml_node_info(node_name):
+            return self.compiler.compile_node(node_info, self.depth + 1)
+        else:
             # no need to parse node if socket not found
             return None
-        return self.compiler.compile_node(node_info, self.depth + 1)
 
     def compile_input_value(self, socket_name: str, value):
         """ Convert value from string and assign it to socket socket_name """
@@ -182,7 +183,9 @@ class BasicNodeCompiler:
 
     def compile_input_special(self, socket_name: str, value):
         """ in case input is not converted directly to blender socket input, like Uber UI enums/checkboxes """
-        log.warn('compile_input_special fails (socket_name: {}, value: {})'.format(socket_name, value))
+        log.warn(
+            f'compile_input_special fails (socket_name: {socket_name}, value: {value})'
+        )
 
     def get_input_socket(self, socket_name: str):
         return self.node_instance.inputs.get(socket_name, None)
@@ -191,7 +194,7 @@ class BasicNodeCompiler:
         try:
             socket.default_value = value
         except Exception:
-            log.error("Failure setting socket {}:{} to value {}".format(socket.name, socket, value))
+            log.error(f"Failure setting socket {socket.name}:{socket} to value {value}")
             raise
 
     def update_node(self):
@@ -205,10 +208,7 @@ class MappedNodeCompiler(BasicNodeCompiler):
 
     def get_input_socket(self, name):
         socket_info = self.input_sockets_info.get(name, None)
-        if not socket_info:
-            return None
-
-        return super().get_input_socket(socket_info.name)
+        return None if not socket_info else super().get_input_socket(socket_info.name)
 
     def compile_input_value(self, name, value):
         """ Convert XML float4 string to required format """
@@ -339,10 +339,7 @@ class UberMaterialCompiler(MappedNodeCompiler):
 
     def get_update_socket_info(self, name):
         socket_info = self.ui_fields.get(name)
-        if socket_info is None:
-            return None
-
-        return socket_info
+        return None if socket_info is None else socket_info
 
     def set_ui_socket_value(self, name, value):
         socket_info = self.ui_fields.get(name)
@@ -379,8 +376,7 @@ class UberMaterialCompiler(MappedNodeCompiler):
             self.set_ui_socket_value('backscatter.separate.color', True)
 
         node_info = self.compiler.get_xml_node_info(linked_node)
-        compiled_node = self.compiler.compile_node(node_info, self.depth + 1)
-        return compiled_node
+        return self.compiler.compile_node(node_info, self.depth + 1)
 
     def compile_input_special(self, name, value):
         if name in self.ignored_sockets:
@@ -406,7 +402,10 @@ class UberMaterialCompiler(MappedNodeCompiler):
         # check for "Separate Backscatter Color": compare "diffuse.color" and "backscatter.color"
         diffuse_color = self.get_input_socket('diffuse.color').default_value
         backscatter_color = self.get_input_socket('backscatter.color').default_value
-        not_equal = sum([1 for i in range(0, 4) if not diffuse_color[i] == backscatter_color[i]]) > 0
+        not_equal = (
+            sum(1 for i in range(0, 4) if diffuse_color[i] != backscatter_color[i])
+            > 0
+        )
         if not_equal:
             info = self.get_update_socket_info('backscatter.separate.color')
             if info is not None:
@@ -414,7 +413,10 @@ class UberMaterialCompiler(MappedNodeCompiler):
 
         # check for "Subsurface Use Diffuse Color": compare "diffuse.color" and "Subsurface Scattering Color"
         subsurface_color = self.get_input_socket('sss.scatterColor').default_value
-        not_equal = sum([1 for i in range(0, 4) if not diffuse_color[i] == subsurface_color[i]]) > 0
+        not_equal = (
+            sum(1 for i in range(0, 4) if diffuse_color[i] != subsurface_color[i])
+            > 0
+        )
         if not_equal:
             info = self.get_update_socket_info('sss.use.diffuse.color')
             if info is not None:
@@ -437,43 +439,44 @@ class ImageTextureCompiler(BasicNodeCompiler):
 
     def compile_input_special(self, input_name, value):
         # for image texture node just get its input_texture image(it's not a separate node for us in blender)
-        if 'data' == input_name:
-            input_texture_node = self.compiler.get_xml_node_info(value)
-            assert 'INPUT_TEXTURE' == input_texture_node.get('type')
+        if input_name != 'data':
+            return
+        input_texture_node = self.compiler.get_xml_node_info(value)
+        assert 'INPUT_TEXTURE' == input_texture_node.get('type')
 
-            attach_mapping_node = False
-            tiling_u = 1
-            tiling_v = 1
+        attach_mapping_node = False
+        tiling_u = 1
+        tiling_v = 1
 
-            # image data in xml are linked as an INPUT_TEXTURE node, parse it
-            for param in input_texture_node.iter(tag='param'):
-                param_type = param.get('type')
-                param_name = param.get('name')
-                param_value = param.get('value')
-                log('\tImageTexture ', 'param', param_name, param_type)
+        # image data in xml are linked as an INPUT_TEXTURE node, parse it
+        for param in input_texture_node.iter(tag='param'):
+            param_type = param.get('type')
+            param_name = param.get('name')
+            param_value = param.get('value')
+            log('\tImageTexture ', 'param', param_name, param_type)
 
-                if param_name == 'path':
-                    self.node_instance.image = self.compiler.load_image(param_value)
-                elif param_name == 'gamma':
-                    self.node_instance.color_space = 'SRGB' if float(param_value) > 1.0 else 'LINEAR'
+            if param_name == 'path':
+                self.node_instance.image = self.compiler.load_image(param_value)
+            elif param_name == 'gamma':
+                self.node_instance.color_space = 'SRGB' if float(param_value) > 1.0 else 'LINEAR'
 
-                # did we have the texture tiling info as well?
-                if param_name in ("tiling_u", "tiling_v"):
-                    attach_mapping_node = True
-                    if param_name == "tiling_u":
-                        tiling_u = float(param_value)
-                    elif param_name == "tiling_v":
-                        tiling_v = float(param_value)
+            # did we have the texture tiling info as well?
+            if param_name in ("tiling_u", "tiling_v"):
+                attach_mapping_node = True
+                if param_name == "tiling_u":
+                    tiling_u = float(param_value)
+                elif param_name == "tiling_v":
+                    tiling_v = float(param_value)
 
             # tiling/offset texture info in Blender stored in a separate node, create and link it
-            if attach_mapping_node:
-                mapping_socket = self.get_input_socket('UV')
-                mapping_node = self.compiler.tree.nodes.new(type='ShaderNodeMapping')
-                log("mapping node {}".format(mapping_node))
-                log("mapping socket {}".format(mapping_socket))
-                mapping_node.scale[0] = tiling_u
-                mapping_node.scale[1] = tiling_v
-                self.compiler.link_node(mapping_node, mapping_socket)
+        if attach_mapping_node:
+            mapping_socket = self.get_input_socket('UV')
+            mapping_node = self.compiler.tree.nodes.new(type='ShaderNodeMapping')
+            log(f"mapping node {mapping_node}")
+            log(f"mapping socket {mapping_socket}")
+            mapping_node.scale[0] = tiling_u
+            mapping_node.scale[1] = tiling_v
+            self.compiler.link_node(mapping_node, mapping_socket)
 
     def get_input_socket(self, name):
         if name in ['uv']:
@@ -553,15 +556,11 @@ class RPRMathCompiler(BasicNodeCompiler):
         if socket_name == 'color1':
             return self.node_instance.inputs[1]
 
-        if socket_name == 'color2':
-            return self.node_instance.inputs[2]
-
-        return None
+        return self.node_instance.inputs[2] if socket_name == 'color2' else None
 
     def compile_input_special(self, socket_name, value):
         if socket_name == 'op':
-            enum_id = self.operation_id_to_enum_id.get(value, None)
-            if enum_id:
+            if enum_id := self.operation_id_to_enum_id.get(value, None):
                 self.node_instance.operation = enum_id
                 return None
 
@@ -571,13 +570,13 @@ class RPRMathCompiler(BasicNodeCompiler):
         """ Change input sockets type to correctly display values outside of "color" values range of [0.0..1.0] """
         if isinstance(value, tuple) and self.socket_type in ('COLOR', 'FLOAT'):
             # for tuple check if it fits the "color" range, use VECTOR mode if not
-            out_of_color_range = sum([0 if 0.0 <= v <= 1.0 else 1 for v in value]) > 0
-            equal = len(value) == 1 or sum([0 if v == value[0] else 1 for v in value[1:]]) == 0
+            out_of_color_range = sum(0 if 0.0 <= v <= 1.0 else 1 for v in value) > 0
+            equal = (
+                len(value) == 1
+                or sum(0 if v == value[0] else 1 for v in value[1:]) == 0
+            )
             if out_of_color_range:
-                if equal:
-                    self.socket_type = 'FLOAT'
-                else:
-                    self.socket_type = 'VECTOR'
+                self.socket_type = 'FLOAT' if equal else 'VECTOR'
                 self.node_instance.display_type = self.socket_type
         elif isinstance(value, float) and self.socket_type == 'COLOR':
             # float is better displayed in FLOAT mode; VECTOR is ok too, ignore
@@ -607,8 +606,7 @@ class LookupCompiler(BasicNodeCompiler):
 
     def compile_input_special(self, input_name: str, value):
         if input_name == 'value':
-            enum_id = self.lookup_id_to_type.get(value, None)
-            if enum_id:
+            if enum_id := self.lookup_id_to_type.get(value, None):
                 self.node_instance.lookup_type = enum_id
                 return None
 

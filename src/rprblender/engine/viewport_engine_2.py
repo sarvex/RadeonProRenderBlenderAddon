@@ -281,10 +281,7 @@ class ViewportEngine2(ViewportEngine):
 
                 if self.background_filter:
                     image = self.resolve_background_aovs(image)
-                    self.rendered_image = image
-                else:
-                    self.rendered_image = image
-
+                self.rendered_image = image
         log("Finish _do_resolve")
 
     def resolve_background_aovs(self, color_image):

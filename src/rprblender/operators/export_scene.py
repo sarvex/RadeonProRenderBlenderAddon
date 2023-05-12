@@ -113,7 +113,7 @@ class RPR_EXPORT_OP_export_rpr_scene(RPR_Operator, ExportHelper):
         # RPRLOADSTORE_EXPORTFLAG_USE_IMAGE_CACHE (1 << 6)
         if not self.export_as_single_file:
             flags |= 1 << 0
-        
+
         compression = {'NONE': 0,
                         'LOW': 1 << 1,
                         'MEDIUM': 1 << 2,
@@ -132,7 +132,7 @@ class RPR_EXPORT_OP_export_rpr_scene(RPR_Operator, ExportHelper):
 
             for i in range(self.start_frame, self.end_frame + 1):
                 filepath_frame = "{}.{:04}.{}".format(begin, i, end)
-                filepath_json = os.path.splitext(filepath_frame)[0] + '.json'
+                filepath_json = f'{os.path.splitext(filepath_frame)[0]}.json'
                 scene.frame_set(i)
 
                 self.export_scene_to_file(context, scene, filepath_frame, filepath_json, flags)
@@ -144,7 +144,7 @@ class RPR_EXPORT_OP_export_rpr_scene(RPR_Operator, ExportHelper):
             log.info(f"Starting scene '{scene.name}' RPR export to '{self.filepath}'")
             time_started = time.time()
 
-            filepath_json = os.path.splitext(self.filepath)[0] + '.json'
+            filepath_json = f'{os.path.splitext(self.filepath)[0]}.json'
             self.export_scene_to_file(context, scene, self.filepath, filepath_json, flags)
 
         log.info(f"Finished RPR export in {time.time() - time_started} s")
@@ -179,12 +179,20 @@ class RPR_EXPORT_OP_export_rpr_scene(RPR_Operator, ExportHelper):
         use_contour = view_layer.rpr.use_contour_render and not devices.cpu_state
 
         data = {
-            'width': int(scene.render.resolution_x * scene.render.resolution_percentage / 100),
-            'height': int(scene.render.resolution_y * scene.render.resolution_percentage / 100),
+            'width': int(
+                scene.render.resolution_x
+                * scene.render.resolution_percentage
+                / 100
+            ),
+            'height': int(
+                scene.render.resolution_y
+                * scene.render.resolution_percentage
+                / 100
+            ),
             'iterations': scene.rpr.limits.max_samples,
             'batchsize': scene.rpr.limits.update_samples,
-            'output': output_base + '.png',
-            'output.json': output_base + 'output.json'
+            'output': f'{output_base}.png',
+            'output.json': f'{output_base}output.json',
         }
 
         # map of aov key to string
@@ -228,15 +236,15 @@ class RPR_EXPORT_OP_export_rpr_scene(RPR_Operator, ExportHelper):
             aov_type = aov['rpr']
             if enable_aov or (use_contour and aov_type in CONTOUR_AOVS):
                 aov_name = aov_map[aov_type]
-                aovs[aov_name] = output_base + '.' + aov_name + '.png'
+                aovs[aov_name] = f'{output_base}.{aov_name}.png'
 
         data['aovs'] = aovs
 
         # set devices based on final render
-        device_settings = {}
-        device_settings['cpu'] = int(devices.cpu_state)
-        device_settings['threads'] = devices.cpu_threads
-        
+        device_settings = {
+            'cpu': int(devices.cpu_state),
+            'threads': devices.cpu_threads,
+        }
         for i, gpu_state in enumerate(devices.available_gpu_states):
             device_settings[f'gpu{i}'] = int(gpu_state)
 

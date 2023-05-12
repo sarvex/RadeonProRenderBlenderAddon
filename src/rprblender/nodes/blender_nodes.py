@@ -55,69 +55,72 @@ def enabled(val: [NodeItem, None]):
     if isinstance(val.data, float) and math.isclose(val.data, 0.0):
         return False
 
-    if isinstance(val.data, tuple) and \
-            math.isclose(val.data[0], 0.0) and \
-            math.isclose(val.data[1], 0.0) and \
-            math.isclose(val.data[2], 0.0):
-        return False
-
-    return True
+    return (
+        not isinstance(val.data, tuple)
+        or not math.isclose(val.data[0], 0.0)
+        or not math.isclose(val.data[1], 0.0)
+        or not math.isclose(val.data[2], 0.0)
+    )
 
 
 def blend_color(factor: NodeItem, color1: NodeItem, color2: NodeItem, blend_type: str):
     # these mix types are copied from cycles OSL
-    if blend_type in ('MIX', 'COLOR'):
-        rpr_node = factor.blend(color1, color2)
+    if blend_type in {'MIX', 'COLOR'}:
+        return factor.blend(color1, color2)
 
     elif blend_type == 'ADD':
-        rpr_node = factor.blend(color1, color1 + color2)
+        return factor.blend(color1, color1 + color2)
 
     elif blend_type == 'MULTIPLY':
-        rpr_node = factor.blend(color1, color1 * color2)
+        return factor.blend(color1, color1 * color2)
 
     elif blend_type == 'SUBTRACT':
-        rpr_node = factor.blend(color1, color1 - color2)
+        return factor.blend(color1, color1 - color2)
 
     elif blend_type == 'DIVIDE':
-        rpr_node = factor.blend(color1, color1 / color2)
+        return factor.blend(color1, color1 / color2)
 
     elif blend_type == 'DIFFERENCE':
-        rpr_node = factor.blend(color1, abs(color1 - color2))
+        return factor.blend(color1, abs(color1 - color2))
 
     elif blend_type == 'DARKEN':
-        rpr_node = factor.blend(color1, color1.min(color2))
+        return factor.blend(color1, color1.min(color2))
 
     elif blend_type == 'LIGHTEN':
-        rpr_node = factor.blend(color1, color1.max(color2))
+        return factor.blend(color1, color1.max(color2))
 
     elif blend_type == 'VALUE':
-        rpr_node = color1
+        return color1
 
     elif blend_type == 'OVERLAY':
         test_val = color1 < 0.5
 
-        rpr_node = factor.blend(color1, test_val.if_else(2.0 * color1 * color2,
-            (1.0 - (1.0 - color1) * (1.0 - color2))))
+        return factor.blend(
+            color1,
+            test_val.if_else(
+                2.0 * color1 * color2, (1.0 - (1.0 - color1) * (1.0 - color2))
+            ),
+        )
 
     elif blend_type == 'SCREEN':
         tm = 1.0 - factor
-        rpr_node = 1.0 - (tm + factor * (1.0 - color2)) * (1.0 - color1)
+        return 1.0 - (tm + factor * (1.0 - color2)) * (1.0 - color1)
 
     elif blend_type == 'SOFT_LIGHT':
         tm = 1.0 - factor
         scr = 1.0 - (1.0 - color2) * (1.0 - color1)
-        rpr_node = tm * color1 + factor * ((1.0 - color1) * color2 * color1 + color1 * scr)
+        return tm * color1 + factor * ((1.0 - color1) * color2 * color1 + color1 * scr)
 
     elif blend_type == 'LINEAR_LIGHT':
         test_val = color2 > 0.5
-        rpr_node = test_val.if_else(color1 + factor * (2.0 * (color2 - 0.5)),
-                                    color1 + factor * (2.0 * color2 - 1.0))
+        return test_val.if_else(
+            color1 + factor * (2.0 * (color2 - 0.5)),
+            color1 + factor * (2.0 * color2 - 1.0),
+        )
 
     else:
         # TODO: finish other mix types: SATURATION, HUE, BURN
-        rpr_node = factor.blend(color1, color2)
-
-    return rpr_node
+        return factor.blend(color1, color2)
 
 
 def eval_curve(mapping: bpy.types.CurveMapping, curve_index: int, value: float) -> float:
@@ -143,8 +146,7 @@ class ShaderNodeOutputMaterial(BaseNodeParser):
         """ Returns the normal node if displacement mode is set to bump 
             this returns a bumped normal, else returns a node_lookup N """
         if self.material.cycles.displacement_method in {"BUMP", "BOTH"}:
-            displacement_input = self.get_input_link("Displacement")
-            if displacement_input:
+            if displacement_input := self.get_input_link("Displacement"):
                 return self.create_node(pyrpr.MATERIAL_NODE_BUMP_MAP, {
                     pyrpr.MATERIAL_INPUT_COLOR: displacement_input,
                     pyrpr.MATERIAL_INPUT_SCALE: 1.0,
@@ -161,9 +163,9 @@ class ShaderNodeOutputMaterial(BaseNodeParser):
             if rpr_node:
                 return rpr_node
 
-            # checking if we have connected node to Volume socket
-            volume_rpr_node = material.sync(self.rpr_context, self.material, 'Volume')
-            if volume_rpr_node:
+            if volume_rpr_node := material.sync(
+                self.rpr_context, self.material, 'Volume'
+            ):
                 if isinstance(self.rpr_context, (RPRContextHybrid, RPRContextHybridPro)):
                     return self.create_node(pyrpr.MATERIAL_NODE_UBERV2, {
                         pyrpr.MATERIAL_INPUT_UBER_DIFFUSE_WEIGHT: 0.0,
@@ -365,10 +367,7 @@ class ShaderNodeBsdfGlass(NodeParser):
 
     def export(self):
         def enabled(val: [NodeItem, None]):
-            if val is None:
-                return False
-
-            return not val.is_zero()
+            return False if val is None else not val.is_zero()
 
         # Getting require inputs. Note: if some inputs are not needed they won't be taken
         base_color = self.get_input_value('Color')
@@ -381,7 +380,7 @@ class ShaderNodeBsdfGlass(NodeParser):
 
         # disable diffuse
         rpr_node.set_input(pyrpr.MATERIAL_INPUT_UBER_DIFFUSE_WEIGHT, 0.0)
-        
+
         # reflection
         rpr_node.set_input(pyrpr.MATERIAL_INPUT_UBER_REFLECTION_WEIGHT, 1.0)
         rpr_node.set_input(pyrpr.MATERIAL_INPUT_UBER_REFLECTION_MODE,
@@ -593,10 +592,10 @@ class ShaderNodeLayerWeight(NodeParser):
         if not normal:
             normal = self.normal_node
 
-            if not normal:
-                normal = self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
-                    pyrpr.MATERIAL_INPUT_VALUE: pyrpr.MATERIAL_NODE_LOOKUP_N
-                })
+        if not normal:
+            normal = self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
+                pyrpr.MATERIAL_INPUT_VALUE: pyrpr.MATERIAL_NODE_LOOKUP_N
+            })
 
         invec = self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
             pyrpr.MATERIAL_INPUT_VALUE: pyrpr.MATERIAL_NODE_LOOKUP_INVEC
@@ -828,16 +827,15 @@ class ShaderNodeTexImage(NodeParser):
 
             # blend three images based on normal dir
             rpr_node = tex_yz * weights.get_channel(0) + \
-                       tex_xz * weights.get_channel(1) + \
-                       tex_xy * weights.get_channel(2)
+                           tex_xz * weights.get_channel(1) + \
+                           tex_xy * weights.get_channel(2)
 
         else:
             rpr_node = self.create_node(pyrpr.MATERIAL_NODE_IMAGE_TEXTURE, {
                 pyrpr.MATERIAL_INPUT_DATA: rpr_image
             })
 
-            vector = self.get_input_link('Vector')
-            if vector:
+            if vector := self.get_input_link('Vector'):
                 rpr_node.set_input(pyrpr.MATERIAL_INPUT_UV, vector)
 
 
@@ -885,10 +883,7 @@ class ShaderNodeBsdfPrincipled(NodeParser):
                 anisotropic_rotation = 0.5 - (anisotropic_rotation % 1.0)
 
         sheen = self.get_input_value('Sheen')
-        sheen_tint = None
-        if enabled(sheen):
-            sheen_tint = self.get_input_value('Sheen Tint')
-
+        sheen_tint = self.get_input_value('Sheen Tint') if enabled(sheen) else None
         clearcoat = self.get_input_value('Clearcoat')
         clearcoat_roughness = None
         clearcoat_normal = None
@@ -1027,16 +1022,12 @@ class ShaderNodeBsdfHair(NodeParser):
         roughness_u = self.get_input_value('RoughnessU').clamp(0.001, 1.0)
         roughness_v = self.get_input_value('RoughnessV').clamp(0.001, 1.0)
 
-        # TODO: use Tangent input
-
-        # Treat reflection as a WARD shader
         if component == 'Reflection':
-            rpr_node = self._create_ward_node(base_color, roughness_u, roughness_v, rotation_angle)
-        else:
-            roughness = (roughness_u + roughness_v) * 0.5
-            rpr_node = self._create_transmission_node(base_color, roughness)
-
-        return rpr_node
+            return self._create_ward_node(
+                base_color, roughness_u, roughness_v, rotation_angle
+            )
+        roughness = (roughness_u + roughness_v) * 0.5
+        return self._create_transmission_node(base_color, roughness)
 
     def export_rpr2(self):
         component = self.node.component
@@ -1050,13 +1041,12 @@ class ShaderNodeBsdfHair(NodeParser):
         if component == 'Reflection':
             rotation_angle = 0.5 - rotation_angle % math.pi  # fit angle to the range [-0.5..+0.5]
 
-            rpr_node = self._create_aniso_reflection_node(base_color, roughness_u, roughness_v,
-                                                          rotation_angle)
+            return self._create_aniso_reflection_node(
+                base_color, roughness_u, roughness_v, rotation_angle
+            )
         else:
             roughness = (roughness_u + roughness_v) * 0.5
-            rpr_node = self._create_transmission_node(base_color, roughness)
-
-        return rpr_node
+            return self._create_transmission_node(base_color, roughness)
 
     def export_hybrid(self):
         # we'll just use roughness_u and uber for bsdf 
@@ -1094,7 +1084,7 @@ class ShaderNodeBsdfHair(NodeParser):
         rough_min = roughness_v.min(roughness_u)
 
         anisotropy = 0
-        if not roughness_u.data == roughness_v.data:
+        if roughness_u.data != roughness_v.data:
             anisotropy = (rough_max - rough_min).clamp(0.001, 1.0)  # limit anisotropy amount
 
         # a rough approximation of reflection roughness
@@ -1116,15 +1106,17 @@ class ShaderNodeBsdfHair(NodeParser):
         return rpr_node
 
     def _create_transmission_node(self, base_color, roughness):
-        rpr_node = self.create_node(pyrpr.MATERIAL_NODE_UBERV2, {
-            pyrpr.MATERIAL_INPUT_UBER_DIFFUSE_WEIGHT: 0.0,
-            pyrpr.MATERIAL_INPUT_UBER_DIFFUSE_COLOR: base_color,
-            pyrpr.MATERIAL_INPUT_UBER_DIFFUSE_ROUGHNESS: roughness,
-            pyrpr.MATERIAL_INPUT_UBER_REFLECTION_WEIGHT: 0.0,
-            pyrpr.MATERIAL_INPUT_UBER_BACKSCATTER_WEIGHT: 1.0,
-            pyrpr.MATERIAL_INPUT_UBER_BACKSCATTER_COLOR: base_color,
-        })
-        return rpr_node
+        return self.create_node(
+            pyrpr.MATERIAL_NODE_UBERV2,
+            {
+                pyrpr.MATERIAL_INPUT_UBER_DIFFUSE_WEIGHT: 0.0,
+                pyrpr.MATERIAL_INPUT_UBER_DIFFUSE_COLOR: base_color,
+                pyrpr.MATERIAL_INPUT_UBER_DIFFUSE_ROUGHNESS: roughness,
+                pyrpr.MATERIAL_INPUT_UBER_REFLECTION_WEIGHT: 0.0,
+                pyrpr.MATERIAL_INPUT_UBER_BACKSCATTER_WEIGHT: 1.0,
+                pyrpr.MATERIAL_INPUT_UBER_BACKSCATTER_COLOR: base_color,
+            },
+        )
 
 
 class ShaderNodeBsdfHairPrincipled(NodeParser):
@@ -1160,8 +1152,7 @@ class ShaderNodeBsdfHairPrincipled(NodeParser):
         # see the node Blender Manual https://docs.blender.org/manual/en/latest/render/shader_nodes/shader/hair_principled.html
         eumelanin = melanin * (1.0 - melanin_redness)
         pheomelanin = melanin * melanin_redness
-        result = eumelanin * (0.506, 0.841, 1.653) + pheomelanin * (0.343, 0.733, 1.924)
-        return result
+        return eumelanin * (0.506, 0.841, 1.653) + pheomelanin * (0.343, 0.733, 1.924)
 
     def _create_absorption_node(self, color, weight, melanin, roughness, roughness_radial, coat, ior):
 
@@ -1248,12 +1239,8 @@ class ShaderNodeAddShader(NodeParser):
         shader1 = self.get_input_link(0)
         shader2 = self.get_input_link(1)
 
-        if shader1 is None and shader2 is None:
-            return None
-
         if shader1 is None:
-            return shader2
-
+            return None if shader2 is None else shader2
         if shader2 is None:
             return shader1
 
@@ -1263,12 +1250,10 @@ class ShaderNodeAddShader(NodeParser):
         })
 
     def export_hybrid(self):
-        shader1 = self.get_input_link(0)
-        if shader1:
+        if shader1 := self.get_input_link(0):
             return shader1
 
-        shader2 = self.get_input_link(1)
-        return shader2
+        return self.get_input_link(1)
 
 
 class ShaderNodeObjectInfo(NodeParser):
@@ -1297,11 +1282,10 @@ class ShaderNodeObjectInfo(NodeParser):
                                      pyrpr.MATERIAL_NODE_LOOKUP_SHAPE_RANDOM_COLOR})
 
     def export_hybrid(self):
-        if self.socket_out.name == 'Random':
-            log.warn(f"Unsupported random object info in Hybrid modes")
-            return self.node_item(float(self.object.pass_index))
-        else:
+        if self.socket_out.name != 'Random':
             return self.export()
+        log.warn("Unsupported random object info in Hybrid modes")
+        return self.node_item(float(self.object.pass_index))
 
 
 class ShaderNodeTexCoord(RuleNodeParser):
@@ -1372,7 +1356,12 @@ class ShaderNodeMixRGB(NodeParser):
 
         rpr_node = blend_color(fac, color1=color1, color2=color2, blend_type=blend_type)
         if blend_type in ('SATURATION', 'HUE', 'BURN'):
-            log.warn(f"Ignoring unsupported MixRGB type", blend_type, self.node, self.material)
+            log.warn(
+                "Ignoring unsupported MixRGB type",
+                blend_type,
+                self.node,
+                self.material,
+            )
 
         if self.node.use_clamp:
             rpr_node = rpr_node.clamp()
@@ -1383,7 +1372,12 @@ class ShaderNodeMixRGB(NodeParser):
         blend_type = self.node.blend_type
 
         if blend_type in ('OVERLAY', 'LINEAR_LIGHT', ):
-            log.warn(f"Ignoring unsupported MixRGB type", blend_type, self.node, self.material)
+            log.warn(
+                "Ignoring unsupported MixRGB type",
+                blend_type,
+                self.node,
+                self.material,
+            )
             return None
 
         # other operations are supported by Hybrid
@@ -1394,17 +1388,17 @@ class ShaderNodeMix(NodeParser):
 
     def export(self):
         data_type = self.node.data_type
-        if data_type == 'RGBA':
-            fac = self.get_input_value(0)
-            val1 = self.get_input_value(6)
-            val2 = self.get_input_value(7)
-
-        elif data_type == 'FLOAT':
+        if data_type == 'FLOAT':
             fac = self.get_input_value(0)
             val1 = self.get_input_value(2)
             val2 = self.get_input_value(3)
 
-        else:  # VECTOR
+        elif data_type == 'RGBA':
+            fac = self.get_input_value(0)
+            val1 = self.get_input_value(6)
+            val2 = self.get_input_value(7)
+
+        else:
             fac = self.get_input_value(self.node.factor_mode != 'UNIFORM')
             val1 = self.get_input_value(4)
             val2 = self.get_input_value(5)
@@ -1419,7 +1413,12 @@ class ShaderNodeMix(NodeParser):
         rpr_node = blend_color(fac, color1=val1, color2=val2, blend_type=blend_type)
 
         if blend_type in ('SATURATION', 'HUE', 'BURN'):
-            log.warn(f"Ignoring unsupported MixRGB type", blend_type, self.node, self.material)
+            log.warn(
+                "Ignoring unsupported MixRGB type",
+                blend_type,
+                self.node,
+                self.material,
+            )
 
         if self.node.clamp_result:
             rpr_node = rpr_node.clamp()
@@ -1431,7 +1430,12 @@ class ShaderNodeMix(NodeParser):
         blend_type = self.node.blend_type
 
         if data_type == 'RGBA' and blend_type in ('OVERLAY', 'LINEAR_LIGHT', ):
-            log.warn(f"Ignoring unsupported MixRGB type", blend_type, self.node, self.material)
+            log.warn(
+                "Ignoring unsupported MixRGB type",
+                blend_type,
+                self.node,
+                self.material,
+            )
             return None
 
         # other operations are supported by Hybrid
@@ -1471,10 +1475,7 @@ class ShaderNodeMath(NodeParser):
             f = in1.floor()
             res = (in1 % 1.0 < 0.5).if_else(f, f + 1.0)
         elif op == 'TRUNC':
-            if in1 > 0.0:
-                res = in1.floor()
-            else:
-                res = in1.ceil()
+            res = in1.floor() if in1 > 0.0 else in1.ceil()
         elif op == 'SQRT':
             res = (in1 > 0.0).if_else(in1 ** (1/2), 0.0)
         elif op == 'INVERSE_SQRT':
@@ -1540,7 +1541,7 @@ class ShaderNodeMath(NodeParser):
         op = self.node.operation
 
         if op in ('LOGARITHM', 'CEIL', 'LESS_THAN', 'GREATER_THAN'):
-            log.warn(f"Ignoring unsupported Math operation", op, self.node, self.material)
+            log.warn("Ignoring unsupported Math operation", op, self.node, self.material)
             return None
 
         # other operations are supported by Hybrid
@@ -1611,16 +1612,16 @@ class ShaderNodeVectorMath(NodeParser):
             else:  # 3-inputs operations
                 in3 = self.get_input_value(2)
 
-                if op == 'WRAP':
-                    # adapted from Blender util_math.h wrapf method
-                    val_range = in2 - in3
-                    if val_range != 0.0:
-                        res = in1 - val_range * ((in1 - in3) / val_range).floor()
-                    else:
-                        res = in3
-                else:
+                if op != 'WRAP':
                     raise ValueError("Incorrect operation", op)
 
+                # adapted from Blender util_math.h wrapf method
+                val_range = in2 - in3
+                res = (
+                    in1 - val_range * ((in1 - in3) / val_range).floor()
+                    if val_range != 0.0
+                    else in3
+                )
         # Apply RGB to BW conversion for "Value" output
         if self.socket_out.name == 'Value':
             res = res.to_bw()
@@ -1631,7 +1632,12 @@ class ShaderNodeVectorMath(NodeParser):
         op = self.node.operation
 
         if op in ('PROJECT', ):
-            log.warn(f"Ignoring unsupported Vector Math operation", op, self.node, self.material)
+            log.warn(
+                "Ignoring unsupported Vector Math operation",
+                op,
+                self.node,
+                self.material,
+            )
             return None
 
         # other operations are supported by Hybrid
@@ -1649,12 +1655,11 @@ class ShaderNodeMixShader(NodeParser):
 
         if isinstance(factor.data, float):
             socket_key = 1 if math.isclose(factor.data, 0.0) else \
-                         2 if math.isclose(factor.data, 1.0) else \
-                         None
+                             2 if math.isclose(factor.data, 1.0) else \
+                             None
 
             if socket_key:
-                shader = self.get_input_link(socket_key)
-                if shader:
+                if shader := self.get_input_link(socket_key):
                     return shader
 
                 return self.create_node(pyrpr.MATERIAL_NODE_DIFFUSE)
@@ -1676,12 +1681,11 @@ class ShaderNodeMixShader(NodeParser):
 
         if isinstance(factor.data, float):
             socket_key = 1 if math.isclose(factor.data, 0.0) else \
-                2 if math.isclose(factor.data, 1.0) else \
-                    None
+                    2 if math.isclose(factor.data, 1.0) else \
+                        None
 
             if socket_key:
-                shader = self.get_input_link(socket_key)
-                if shader:
+                if shader := self.get_input_link(socket_key):
                     return shader
 
                 return self.create_node(pyrpr.MATERIAL_NODE_UBERV2, {
@@ -1728,9 +1732,8 @@ class ShaderNodeNormal(NodeParser):
         if self.socket_out.name == 'Normal':
             return default
 
-        else:
-            normal = self.get_input_value('Normal')
-            return normal.dot3(default)
+        normal = self.get_input_value('Normal')
+        return normal.dot3(default)
 
 
 class ShaderNodeBump(NodeParser):
@@ -1862,10 +1865,7 @@ class ShaderNodeValToRGB(NodeParser):
             pyrpr.MATERIAL_INPUT_UV: uv
         })
 
-        if self.socket_out.name == 'Alpha':
-            return buf_node.get_channel(3)
-
-        return buf_node
+        return buf_node.get_channel(3) if self.socket_out.name == 'Alpha' else buf_node
 
     def export_hybrid(self):
         fac = self.get_input_scalar('Fac')
@@ -1888,22 +1888,20 @@ class ShaderNodeMapRange(NodeParser):
         ''' Get an input value like this.  
             This creates rpr "shader nodes" behind the scenes.
         '''
-        from_min = self.get_input_value('From Min')  
+        from_min = self.get_input_value('From Min')
         from_max = self.get_input_value('From Max')
         to_min = self.get_input_value('To Min')
         to_max = self.get_input_value('To Max')
-        
+
         ''' Doing math like this is actually compiled into a 
             shader that is executed at runtime. '''
-        from_range = from_max - from_min  
+        from_range = from_max - from_min
         to_range = to_max - to_min
         value = self.get_input_value('Value')
         if self.node.clamp:  # you can access node values like this
             value = value.clamp(from_min, from_max)
         point_in_from_range = value - from_min
-        result_shader_node = from_min + point_in_from_range * (to_range / from_range)
-
-        return result_shader_node
+        return from_min + point_in_from_range * (to_range / from_range)
 
 
 class ShaderNodeTexGradient(NodeParser):
@@ -1919,32 +1917,31 @@ class ShaderNodeTexGradient(NodeParser):
 
         gradiant_type = self.node.gradient_type
         x = vec.get_channel(0)
-        if gradiant_type == 'LINEAR':
-            val = x
-        elif gradiant_type == 'QUADRATIC':
-            r = x.max(0.0)
-            val = r * r
+        if gradiant_type == 'DIAGONAL':
+            y = vec.get_channel(1)
+            return (x + y) * 0.5
         elif gradiant_type == 'EASING':
             r = x.clamp()
             t = r * r
-            val = t * 3.0 - t * r * 2.0
-        elif gradiant_type == 'DIAGONAL':
-            y = vec.get_channel(1)
-            val = (x + y) * 0.5
-        elif gradiant_type == 'RADIAL':
-            y = vec.get_channel(1)
-            atan2 = self.create_arithmetic(pyrpr.MATERIAL_NODE_OP_ATAN, y, x)
-            val = atan2 / (2.0 * math.pi) + 0.5
-        else:
+            return t * 3.0 - t * r * 2.0
+        elif gradiant_type == 'LINEAR':
+            return x
+        elif gradiant_type == 'QUADRATIC':
+            r = x.max(0.0)
+            return r * r
+        elif gradiant_type == 'QUADRATIC_SPHERE':
             # r = max(1.0 - length, 0.0);
             length = vec.length()
             r = (1.0 - length).max(0.0)
-            if gradiant_type == 'QUADRATIC_SPHERE':
-                val = r * r
-            else:  # 'SPHERICAL'
-                val = r
-
-        return val
+            return r * r
+        elif gradiant_type == 'RADIAL':
+            y = vec.get_channel(1)
+            atan2 = self.create_arithmetic(pyrpr.MATERIAL_NODE_OP_ATAN, y, x)
+            return atan2 / (2.0 * math.pi) + 0.5
+        else:
+            # r = max(1.0 - length, 0.0);
+            length = vec.length()
+            return (1.0 - length).max(0.0)
 
 
 class ShaderNodeFloatCurve(NodeParser):
@@ -1954,8 +1951,6 @@ class ShaderNodeFloatCurve(NodeParser):
     """
     def export(self):
         """ create a buffer from ramp data and sample it in nodes if connected """
-        BUFFER_SIZE = 256  # hard code, this is what cycles does
-
         in_val = self.get_input_value('Value')
         fac = self.get_input_value('Factor')
         mapping = self.node.mapping
@@ -1967,6 +1962,8 @@ class ShaderNodeFloatCurve(NodeParser):
             out_val = eval_curve(mapping, 0, in_val.data)
 
         else:
+            BUFFER_SIZE = 256  # hard code, this is what cycles does
+
             arr = np.fromiter((eval_curve(mapping, 0, i / (BUFFER_SIZE - 1)) for i in range(BUFFER_SIZE)),
                               dtype=np.float32).reshape(-1, 1)
             rpr_buffer = self.rpr_context.create_buffer(arr, pyrpr.BUFFER_ELEMENT_TYPE_FLOAT32)
@@ -2117,15 +2114,16 @@ class ShaderNodeTexVoronoi(NodeParser):
             'Position': pyrpr.VORONOI_OUT_TYPE_POSITION
         }[self.socket_out.name]
 
-        voronoi = self.create_node(pyrpr.MATERIAL_NODE_VORONOI_TEXTURE, {
-            pyrpr.MATERIAL_INPUT_UV: mapping,
-            pyrpr.MATERIAL_INPUT_SCALE: scale,
-            pyrpr.MATERIAL_INPUT_RANDOMNESS: randomness,
-            pyrpr.MATERIAL_INPUT_DIMENSION: dimensions,
-            pyrpr.MATERIAL_INPUT_OUTTYPE: out_type,
-        })
-
-        return voronoi
+        return self.create_node(
+            pyrpr.MATERIAL_NODE_VORONOI_TEXTURE,
+            {
+                pyrpr.MATERIAL_INPUT_UV: mapping,
+                pyrpr.MATERIAL_INPUT_SCALE: scale,
+                pyrpr.MATERIAL_INPUT_RANDOMNESS: randomness,
+                pyrpr.MATERIAL_INPUT_DIMENSION: dimensions,
+                pyrpr.MATERIAL_INPUT_OUTTYPE: out_type,
+            },
+        )
 
     def export(self):
         return None
@@ -2139,10 +2137,7 @@ class ShaderNodeMapping(NodeParser):
 
     def export(self):
         """ Export node by version as it was changed in 2.81 """
-        if BLENDER_VERSION == '2.80':  # running on Blender 2.80
-            return self.export_280()
-
-        return self.export_281()
+        return self.export_280() if BLENDER_VERSION == '2.80' else self.export_281()
 
     def rotation(self, mapping, transpose=False):
         """ returns a vector transformed by rotation """
@@ -2205,9 +2200,7 @@ class ShaderNodeMapping(NodeParser):
         if not (math.isclose(offset[0], 0.0) and math.isclose(offset[1], 0.0)):
             mapping = mapping - offset
 
-        # apply rotation, Z axis only
-        angle = self.node.rotation[2]  # Blender Mapping node angle is already in radians
-        if angle:
+        if angle := self.node.rotation[2]:
             part1 = mapping.dot3((math.cos(angle), math.sin(angle), 0.0))
             part2 = mapping.dot3((-math.sin(angle), math.cos(angle), 0.0))
             mapping = part1.combine(part2, (1.0, 1.0, 1.0))
@@ -2752,10 +2745,7 @@ class ShaderNodeEeveeSpecular(NodeParser):
             if val is None:
                 return False
 
-            if isinstance(val, float) and math.isclose(val, 0.0):
-                return False
-
-            return True
+            return not isinstance(val, float) or not math.isclose(val, 0.0)
 
         # Getting require inputs. Note: if some inputs are not needed they won't be taken
         base_color = self.get_input_value('Base Color')
@@ -2832,10 +2822,7 @@ class ShaderNodeBevel(NodeParser):
             pyrpr.MATERIAL_INPUT_RADIUS: radius,
         })
 
-        if normal is None:
-            return bevel
-
-        return (bevel + normal).normalize()
+        return bevel if normal is None else (bevel + normal).normalize()
 
     def export_hybrid(self):
         return None
@@ -2872,7 +2859,12 @@ class ShaderNodeHairInfo(NodeParser):
     def export_hybrid(self):
         out_socket_name = self.socket_out.name
         if out_socket_name in ("Is Strand", "Length", "Thickness", "Tangent Normal", "Random"):
-            log.warn(f"Ignoring unsupported Output Socket", out_socket_name, self.node, self.material)
+            log.warn(
+                "Ignoring unsupported Output Socket",
+                out_socket_name,
+                self.node,
+                self.material,
+            )
             return None
 
         return self.export()

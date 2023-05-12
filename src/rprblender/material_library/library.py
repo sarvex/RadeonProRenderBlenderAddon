@@ -63,19 +63,19 @@ class RPRMaterialLibrary:
         self.path = get_library_path()
         if not self.path:
             return False
-        log.info("Material library located at {}".format(self.path))
+        log.info(f"Material library located at {self.path}")
 
         # Check that the manifest exists.
-        manifest_file = self.path + "/manifest.json"
+        manifest_file = f"{self.path}/manifest.json"
         if not os.path.isfile(manifest_file):
-            log.error("Unable to find Material Library manifest at {}".format(self.path))
+            log.error(f"Unable to find Material Library manifest at {self.path}")
             return False
 
         # Read the manifest.
         with open(manifest_file) as data_file:
             manifest = json.load(data_file)
 
-        log("categories: {}".format([entry['name'] for entry in manifest["categories"]]))
+        log(f"""categories: {[entry['name'] for entry in manifest["categories"]]}""")
 
         # parse sorted categories to store materials info
         for category in sorted(manifest["categories"], key=lambda items: items['name']):
@@ -116,7 +116,7 @@ class RPRMaterialLibrary:
         """ Create search category if changed, prepare browsing data for it """
         if len(search_string) < 2:
             return 'INVALID_SEARCH'
-        category_name = 'SEARCH.{}'.format(search_string)
+        category_name = f'SEARCH.{search_string}'
 
         # have we already prepared info for this search?
         if self.active_category == category_name:
@@ -149,13 +149,16 @@ class RPRMaterialLibrary:
         """ Return direct path to material xml file and material name by material enum id """
         material_name = self.active_materials[enum_id][0]
         info = self.materials[material_name]
-        return str(Path(self.path).joinpath(info.file_name, info.file_name + ".xml")), material_name
+        return (
+            str(Path(self.path).joinpath(info.file_name, f"{info.file_name}.xml")),
+            material_name,
+        )
 
     def get_material_preview(self, material: MaterialEntry):
         """ Load preview image for material, return preview object """
         # Find the icon file name.
         file_name = material.file_name
-        file_path = self.path + "/" + file_name + "/" + file_name + ".jpg"
+        file_path = f"{self.path}/{file_name}/{file_name}.jpg"
 
         # Return a cached preview if possible.
         if file_path in self.material_preview_cache:

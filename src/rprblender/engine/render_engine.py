@@ -214,12 +214,13 @@ class RenderEngine(Engine):
             self.rpr_engine.end_result(result)
 
     def _render(self):
-        athena_data = {}
-
         time_begin = time.perf_counter()
-        athena_data['Start Time'] = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
-        athena_data['End Status'] = "successful"
-
+        athena_data = {
+            'Start Time': datetime.datetime.utcnow().strftime(
+                "%Y-%m-%d %H:%M:%S.%f"
+            ),
+            'End Status': "successful",
+        }
         self.current_sample = 0
         is_adaptive = self.rpr_context.is_aov_enabled(pyrpr.AOV_VARIANCE)
         if is_adaptive:
@@ -234,7 +235,7 @@ class RenderEngine(Engine):
 
             self.current_render_time = time.perf_counter() - time_begin
             is_adaptive_active = is_adaptive and self.current_sample >= \
-                                 self.rpr_context.get_parameter(pyrpr.CONTEXT_ADAPTIVE_SAMPLING_MIN_SPP)
+                                     self.rpr_context.get_parameter(pyrpr.CONTEXT_ADAPTIVE_SAMPLING_MIN_SPP)
 
             # if less than update_samples left, use the remainder
             update_samples = min(render_update_samples,
@@ -242,7 +243,7 @@ class RenderEngine(Engine):
 
             # we report time/iterations left as fractions if limit enabled
             time_str = f"{self.current_render_time:.1f}/{self.render_time}" if self.render_time \
-                       else f"{self.current_render_time:.1f}"
+                           else f"{self.current_render_time:.1f}"
 
             # percent done is one of percent iterations or percent time so pick whichever is greater
             progress = max(
@@ -250,9 +251,9 @@ class RenderEngine(Engine):
                 self.current_render_time / self.render_time if self.render_time else 0
             )
             info_str = f"Render Time: {time_str} sec | "\
-                       f"Samples: {self.current_sample}/{self.render_samples}"
+                           f"Samples: {self.current_sample}/{self.render_samples}"
             log_str = f"  samples: {self.current_sample} +{update_samples} / {self.render_samples}"\
-                      f", progress: {progress * 100:.1f}%, time: {self.current_render_time:.2f}"
+                          f", progress: {progress * 100:.1f}%, time: {self.current_render_time:.2f}"
             if is_adaptive_active:
                 adaptive_progress = max((all_pixels - active_pixels) / all_pixels, 0.0)
 
@@ -317,13 +318,11 @@ class RenderEngine(Engine):
         athena_data['Stop Time'] = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
         athena_data['Samples'] = self.current_sample
 
-        log.info(f"Scene synchronization time:", perfcounter_to_str(self.sync_time))
-        log.info(f"Render time:", perfcounter_to_str(self.current_render_time))
+        log.info("Scene synchronization time:", perfcounter_to_str(self.sync_time))
+        log.info("Render time:", perfcounter_to_str(self.current_render_time))
         self.athena_send(athena_data)
 
     def _render_tiles(self):
-        athena_data = {}
-
         tile_iterator = utils.tile_iterator(self.tile_order, self.width, self.height, *self.tile_size)
         tiles_number = tile_iterator.len
         is_adaptive = self.rpr_context.is_aov_enabled(pyrpr.AOV_VARIANCE)
@@ -331,8 +330,12 @@ class RenderEngine(Engine):
         rpr_camera = self.rpr_context.scene.camera
 
         time_begin = time.perf_counter()
-        athena_data['Start Time'] = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
-        athena_data['End Status'] = "successful"
+        athena_data = {
+            'Start Time': datetime.datetime.utcnow().strftime(
+                "%Y-%m-%d %H:%M:%S.%f"
+            ),
+            'End Status': "successful",
+        }
         progress = 0.0
 
         render_update_samples = self.render_update_samples
@@ -367,13 +370,13 @@ class RenderEngine(Engine):
                 self.current_render_time = time.perf_counter() - time_begin
                 progress = (tile_index + sample/self.render_samples) / tiles_number
                 info_str = f"Render Time: {self.current_render_time:.1f} sec"\
-                           f" | Tile: {tile_index}/{tiles_number}"\
-                           f" | Samples: {sample}/{self.render_samples}"
+                               f" | Tile: {tile_index}/{tiles_number}"\
+                               f" | Samples: {sample}/{self.render_samples}"
                 log_str = f"  samples: {sample} +{update_samples} / {self.render_samples}"\
-                    f", progress: {progress * 100:.1f}%, time: {self.current_render_time:.2f}"
+                        f", progress: {progress * 100:.1f}%, time: {self.current_render_time:.2f}"
 
                 is_adaptive_active = is_adaptive and sample >= \
-                                     self.rpr_context.get_parameter(pyrpr.CONTEXT_ADAPTIVE_SAMPLING_MIN_SPP)
+                                         self.rpr_context.get_parameter(pyrpr.CONTEXT_ADAPTIVE_SAMPLING_MIN_SPP)
                 if is_adaptive_active:
                     adaptive_progress = max((all_pixels - active_pixels) / all_pixels, 0.0)
                     progress = max(progress, (tile_index + adaptive_progress) / tiles_number)
@@ -464,13 +467,13 @@ class RenderEngine(Engine):
         athena_data['Stop Time'] = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
         athena_data['Samples'] = round(self.render_samples * progress)
 
-        log.info(f"Scene synchronization time:", perfcounter_to_str(self.sync_time))
-        log.info(f"Render time:", perfcounter_to_str(self.current_render_time))
+        log.info("Scene synchronization time:", perfcounter_to_str(self.sync_time))
+        log.info("Render time:", perfcounter_to_str(self.current_render_time))
 
         self.athena_send(athena_data)
 
     def _render_contour(self):
-        log(f"Doing Outline Pass")
+        log("Doing Outline Pass")
 
         # set contour settings
         self.rpr_context.set_parameter(pyrpr.CONTEXT_GPUINTEGRATOR, "gpucontour")
@@ -488,12 +491,13 @@ class RenderEngine(Engine):
         # setting camera
         self.camera_data.export(self.rpr_context.scene.camera)
 
-        athena_data = {}
-
         time_begin = time.perf_counter()
-        athena_data['Start Time'] = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
-        athena_data['End Status'] = "successful"
-
+        athena_data = {
+            'Start Time': datetime.datetime.utcnow().strftime(
+                "%Y-%m-%d %H:%M:%S.%f"
+            ),
+            'End Status': "successful",
+        }
         self.current_sample = 0
 
         while True:
@@ -508,7 +512,7 @@ class RenderEngine(Engine):
 
             # we report time/iterations left as fractions if limit enabled
             time_str = f"{self.current_render_time:.1f}/{self.render_time}" if self.render_time \
-                       else f"{self.current_render_time:.1f}"
+                           else f"{self.current_render_time:.1f}"
 
             # percent done is one of percent iterations or percent time so pick whichever is greater
             progress = max(
@@ -516,9 +520,9 @@ class RenderEngine(Engine):
                 self.current_render_time / self.render_time if self.render_time else 0
             )
             info_str = f"Outline Pass | Render Time: {time_str} sec | "\
-                       f"Samples: {self.current_sample}/{self.contour_pass_samples}"
+                           f"Samples: {self.current_sample}/{self.contour_pass_samples}"
             log_str = f"  samples: {self.current_sample} +{update_samples} / {self.contour_pass_samples}"\
-                      f", progress: {progress * 100:.1f}%, time: {self.current_render_time:.2f}"
+                          f", progress: {progress * 100:.1f}%, time: {self.current_render_time:.2f}"
 
             self.notify_status(progress, info_str)
 
@@ -545,8 +549,8 @@ class RenderEngine(Engine):
         athena_data['Stop Time'] = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
         athena_data['Samples'] = self.current_sample
 
-        log.info(f"Scene synchronization time:", perfcounter_to_str(self.sync_time))
-        log.info(f"Render time:", perfcounter_to_str(self.current_render_time))
+        log.info("Scene synchronization time:", perfcounter_to_str(self.sync_time))
+        log.info("Render time:", perfcounter_to_str(self.current_render_time))
         self.athena_send(athena_data)
 
     def render(self):
@@ -596,7 +600,7 @@ class RenderEngine(Engine):
         self._init_rpr_context(scene)
 
         border = ((0, 0), (1, 1)) if not scene.render.use_border else \
-            ((scene.render.border_min_x, scene.render.border_min_y),
+                ((scene.render.border_min_x, scene.render.border_min_y),
              (scene.render.border_max_x - scene.render.border_min_x, scene.render.border_max_y - scene.render.border_min_y))
 
         screen_width = int(scene.render.resolution_x * scene.render.resolution_percentage / 100)
@@ -615,7 +619,7 @@ class RenderEngine(Engine):
 
         # CACHE BLUR DATA
         self.rpr_context.do_motion_blur = scene.render.use_motion_blur and \
-            not math.isclose(scene.camera.data.rpr.motion_blur_exposure, 0.0)
+                not math.isclose(scene.camera.data.rpr.motion_blur_exposure, 0.0)
 
         # with enabled motion blur, cache_blur_data() can change frame,
         # therefore we store current frame and set it back after export process
@@ -692,7 +696,7 @@ class RenderEngine(Engine):
                     log.warn("Tiles rendering is not supported for Panoramic camera")
                 else:
                     # create adaptive subdivision camera to use total render area for calculations
-                    subdivision_camera_key = camera_key + ".RPR_ADAPTIVE_SUBDIVISION_CAMERA"
+                    subdivision_camera_key = f"{camera_key}.RPR_ADAPTIVE_SUBDIVISION_CAMERA"
                     subdivision_camera = self.rpr_context.create_camera(subdivision_camera_key)
                     self.camera_data.export(subdivision_camera)
                     self.rpr_context.scene.set_subdivision_camera(subdivision_camera)
@@ -878,11 +882,7 @@ class RenderEngine(Engine):
         for i, gpu_state in enumerate(devices.available_gpu_states):
             if gpu_state:
                 name = pyrpr.Context.gpu_devices[i]['name']
-                if selected_gpu_names:
-                    selected_gpu_names += f" + {name}"
-                else:
-                    selected_gpu_names += name
-
+                selected_gpu_names += f" + {name}" if selected_gpu_names else name
         hardware = ''
         render_mode = ''
         if selected_gpu_names:
@@ -893,15 +893,13 @@ class RenderEngine(Engine):
                 render_mode += " + "
         if devices.cpu_state:
             hardware += cpu_name
-            render_mode = render_mode + "CPU"
+            render_mode += "CPU"
         text = text.replace("%g", selected_gpu_names)
         text = text.replace("%r", render_mode)
         text = text.replace("%h", hardware)
 
         ver = bl_info['version']
-        text = text.replace("%b", f"v{ver[0]}.{ver[1]}.{ver[2]}")
-
-        return text
+        return text.replace("%b", f"v{ver[0]}.{ver[1]}.{ver[2]}")
 
     def apply_render_stamp_to_image(self):
         """

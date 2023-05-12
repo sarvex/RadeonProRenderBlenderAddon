@@ -27,7 +27,9 @@ arch = platform.architecture()
 uname = platform.uname()
 
 
-assert '64bit' == arch[0] and (('Windows' in uname[0]) or ('Linux' in uname[0]) or ('Darwin' in uname[0])), arch
+assert arch[0] == '64bit' and (
+    ('Windows' in uname[0]) or ('Linux' in uname[0]) or ('Darwin' in uname[0])
+), arch
 
 subprocess.check_call([sys.executable, 'src/tools/encrypt_athena_bin.py'])
 
@@ -47,7 +49,7 @@ if sys.version_info.major == 3 and sys.version_info.minor == 10:
     shutil.rmtree('.build', ignore_errors=True)
     os.makedirs('.build')
     os.chdir('.build')
-    if 'Windows' == platform.system():
+    if platform.system() == 'Windows':
         subprocess.check_call(['cmake', '-G', 'Visual Studio 16 2019',  '..'])
     else:
         subprocess.check_call(['cmake', '..'])

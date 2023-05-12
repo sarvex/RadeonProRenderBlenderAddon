@@ -94,11 +94,13 @@ def sync(rpr_context, image: bpy.types.Image, use_color_space=None, frame_number
 
     pixels = image.pixels
     if image.source == 'SEQUENCE':
-        file_path = get_sequence_frame_file_path(image.filepath_from_user(), frame_number)
-        if not file_path:
-            return None
-        rpr_image = rpr_context.create_image_file(image_key, file_path)
+        if file_path := get_sequence_frame_file_path(
+            image.filepath_from_user(), frame_number
+        ):
+            rpr_image = rpr_context.create_image_file(image_key, file_path)
 
+        else:
+            return None
     elif rpr_context.engine_type != ExportEngine.TYPE and hasattr(pixels, 'foreach_get'):
         data = utils.get_prop_array_data(pixels)
         data = np.flipud(data.reshape(image.size[1], image.size[0], image.channels))

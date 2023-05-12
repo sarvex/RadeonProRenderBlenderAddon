@@ -51,14 +51,14 @@ def export(json_file_name, dependencies, header_file_name, cffi_name, output_nam
                str(rif_sdk['inc'])]
 
     lib_dir = []
-    if "Windows" == platform.system():
+    if platform.system() == "Windows":
         lib_dir = [str(rpr_sdk['lib']),
                    str(rif_sdk['lib'])]
 
     for d in inc_dir:
-        assert os.path.isdir(d), "Bad include path: '%s'" % d
+        assert os.path.isdir(d), f"Bad include path: '{d}'"
     for d in lib_dir:
-        assert os.path.isdir(d), "Bad lib path: '%s'" % d
+        assert os.path.isdir(d), f"Bad lib path: '{d}'"
 
     if abi_mode:
         ffi.set_source(cffi_name, None)
@@ -76,7 +76,7 @@ def export(json_file_name, dependencies, header_file_name, cffi_name, output_nam
 
     build_dir = Path(__file__).parent / '.build'
 
-    if not '--no-compile' in sys.argv:
+    if '--no-compile' not in sys.argv:
         ffi.compile(tmpdir=str(build_dir), verbose=True)
 
     import _cffi_backend
@@ -84,13 +84,13 @@ def export(json_file_name, dependencies, header_file_name, cffi_name, output_nam
     import subprocess
 
     with (build_dir / output_name).open('w') as pyrprwrap:
-        cmd = [sys.executable, output_name_make, str(api_desc_fpath)]
+        cmd = [sys.executable, output_name_make, api_desc_fpath]
         print(cmd)
         subprocess.check_call(cmd, stdout=pyrprwrap)
 
     shutil.copy(_cffi_backend.__file__, str(build_dir))
 
-    if 'Linux' == platform.system():
+    if platform.system() == 'Linux':
         cffi_libs_dir = Path(_cffi_backend.__file__).parent / '.libs_cffi_backend'
         if not cffi_libs_dir.is_dir():
             cffi_libs_dir = Path(_cffi_backend.__file__).parent / 'cffi.libs'
@@ -108,7 +108,7 @@ def export(json_file_name, dependencies, header_file_name, cffi_name, output_nam
         print(' '.join(cmd))
         subprocess.check_call(cmd)
 
-    if 'Darwin' == platform.system():
+    if platform.system() == 'Darwin':
         for path in (Path(_cffi_backend.__file__).parent).iterdir():
             if '.so' in path.suffixes and "cffi" in str(path):
                 # copy library needed for cffi backend
@@ -121,40 +121,57 @@ def write_api(api_desc_fpath, f, abi_mode):
     for name, c in api.constants.items():
         print(name)
         # if a constant is actually a variable to another constant reference that
-        if "RPR_" + c.value in api.constants.keys():
-            print('#define', name, pyrprapi.eval_constant(api.constants["RPR_" + c.value].value)
-                  if abi_mode else '...', file=f)
-        elif "RIF_" + c.value in api.constants.keys():
-            print('#define', name, pyrprapi.eval_constant(api.constants["RIF_" + c.value].value)
-                  if abi_mode else '...', file=f)
+        if f"RPR_{c.value}" in api.constants.keys():
+            print(
+                '#define',
+                name,
+                pyrprapi.eval_constant(api.constants[f"RPR_{c.value}"].value)
+                if abi_mode
+                else '...',
+                file=f,
+            )
+        elif f"RIF_{c.value}" in api.constants.keys():
+            print(
+                '#define',
+                name,
+                pyrprapi.eval_constant(api.constants[f"RIF_{c.value}"].value)
+                if abi_mode
+                else '...',
+                file=f,
+            )
         else:
-          print('#define', name, pyrprapi.eval_constant(c.value) if abi_mode else '...', file=f)
+            print('#define', name, pyrprapi.eval_constant(c.value) if abi_mode else '...', file=f)
     for name, t in api.types.items():
         print(name, t.kind)
         # causes error while parsing 'rpr_stat', 'rpr_stats' in RadeonProRender_Baikal.h
         if name in ('rpr_stat', 'rpr_stats'):
             continue
-        if 'struct' == t.kind:
+        if t.kind == 'struct':
             print('typedef struct', name, '{', file=f)
             for field in t.fields:
-                print('    ' + field.type, field.name + ';', file=f)
+                print(f'    {field.type}', f'{field.name};', file=f)
             print('};', file=f)
         else:
             print('typedef ', t.type, name, ';', file=f)
     for name, t in api.functions.items():
-        if 'rifContextExecuteCommandQueue' == name:
+        if name == 'rifContextExecuteCommandQueue':
             print('rif_int rifContextExecuteCommandQueue(rif_context context, rif_command_queue command_queue, void *executeFinishedCallbackFunction(void* userdata), void* data, rif_performance_statistic* statistics);', file=f)
             continue
         print(name, [(arg.name, arg.type) for arg in t.args])
-        print(t.restype, name, '(' + ', '.join(arg.type + ' ' + arg.name for arg in t.args) + ');', file=f)
+        print(
+            t.restype,
+            name,
+            '(' + ', '.join(f'{arg.type} {arg.name}' for arg in t.args) + ');',
+            file=f,
+        )
 
 
 if __name__ == "__main__":
-    abi_mode = 'Windows' != platform.system()
+    abi_mode = platform.system() != 'Windows'
     if '--abi-mode' in sys.argv:
         abi_mode = True
-        
-                
+
+
     export('pyrprwrapapi.json', [], 'rprwrap.h', 
            '__rpr', 'pyrprwrap.py', 'pyrprwrap_make.py', abi_mode)
 

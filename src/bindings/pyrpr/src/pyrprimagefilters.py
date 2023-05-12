@@ -331,9 +331,7 @@ class ImageFilter(Object):
             ImageFilterSetParameterFloatArray(self, pyrpr.encode(name), arr, len(value))
             self.parameters[name] = (value, arr)
         elif isinstance(value, list) and isinstance(value[0], Image):
-            handles = []
-            for img in value:
-                handles.append(img._get_handle())
+            handles = [img._get_handle() for img in value]
             arr = ArrayObject('rif_image[]', handles)
             ImageFilterSetParameterImageArray(self,pyrpr.encode(name), arr, len(value))
             self.parameters[name] = (value, arr)

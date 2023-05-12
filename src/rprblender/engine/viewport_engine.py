@@ -90,26 +90,24 @@ class ViewportSettings:
                 x, y = x1, y1
                 dx, dy = x2 - x1, y2 - y1
                 x1 = int(x + scene.render.border_min_x * dx)
-                x2 = int(x + scene.render.border_max_x * dx)
-                y1 = int(y + scene.render.border_min_y * dy)
-                y2 = int(y + scene.render.border_max_y * dy)
-
                 # adjusting to region screen resolution
                 x1 = max(min(x1, self.screen_width), 0)
+                x2 = int(x + scene.render.border_max_x * dx)
                 x2 = max(min(x2, self.screen_width), 0)
+                y1 = int(y + scene.render.border_min_y * dy)
                 y1 = max(min(y1, self.screen_height), 0)
+                y2 = int(y + scene.render.border_max_y * dy)
                 y2 = max(min(y2, self.screen_height), 0)
 
-        else:
-            if context.space_data.use_render_border:
-                # getting border corners from viewport camera
+        elif context.space_data.use_render_border:
+            # getting border corners from viewport camera
 
-                x, y = x1, y1
-                dx, dy = x2 - x1, y2 - y1
-                x1 = int(x + context.space_data.render_border_min_x * dx)
-                x2 = int(x + context.space_data.render_border_max_x * dx)
-                y1 = int(y + context.space_data.render_border_min_y * dy)
-                y2 = int(y + context.space_data.render_border_max_y * dy)
+            x, y = x1, y1
+            dx, dy = x2 - x1, y2 - y1
+            x1 = int(x + context.space_data.render_border_min_x * dx)
+            x2 = int(x + context.space_data.render_border_max_x * dx)
+            y1 = int(y + context.space_data.render_border_min_y * dy)
+            y2 = int(y + context.space_data.render_border_max_y * dy)
 
         # getting render resolution and render border
         width, height = x2 - x1, y2 - y1
@@ -395,10 +393,10 @@ class ViewportEngine(Engine):
 
                 if self.render_iterations > 0:
                     info_str = f"Time: {time_render:.1f} sec" \
-                               f" | Iteration: {iteration}/{self.render_iterations}"
+                                   f" | Iteration: {iteration}/{self.render_iterations}"
                 else:
                     info_str = f"Time: {time_render:.1f}/{self.render_time} sec" \
-                               f" | Iteration: {iteration}"
+                                   f" | Iteration: {iteration}"
 
                 if is_adaptive_active:
                     adaptive_progress = max((all_pixels - active_pixels) / all_pixels, 0.0)
@@ -407,12 +405,13 @@ class ViewportEngine(Engine):
                 if self.denoised_image is not None:
                     info_str += " | Denoised"
 
-                if self.render_iterations > 0:
-                    if iteration >= self.render_iterations:
-                        is_last_iteration = True
-                else:
-                    if time_render >= self.render_time:
-                        is_last_iteration = True
+                if (
+                    self.render_iterations > 0
+                    and iteration >= self.render_iterations
+                    or self.render_iterations <= 0
+                    and time_render >= self.render_time
+                ):
+                    is_last_iteration = True
                 if is_adaptive and active_pixels == 0:
                     is_last_iteration = True
 

@@ -29,28 +29,21 @@ def convert_kelvins_to_rgb_bartlett(color_temperature: float) -> tuple:
         color_temperature = 40000
 
     tmp_internal = color_temperature / 100.0
-    # red
     if tmp_internal < 66.0:
         red = 255.0
+        tmp_green = -155.25485562709179\
+                    - 0.44596950469579133 * (tmp_internal - 2.0)\
+                    + 104.49216199393888 * math.log(tmp_internal - 2.0)
     else:
         tmp_red = 351.97690566805693 \
                   + 0.114206453784165 * (tmp_internal - 55.0) \
                   - 40.25366309332127 * math.log(tmp_internal - 55.0)
         red = max(0.0, min(tmp_red, 255.0))
 
-    # green
-    if tmp_internal < 66.0:
-        tmp_green = -155.25485562709179\
-                    - 0.44596950469579133 * (tmp_internal - 2.0)\
-                    + 104.49216199393888 * math.log(tmp_internal - 2.0)
-        green = max(0.0, min(tmp_green, 255.0))
-    else:
         tmp_green = 325.4494125711974 \
                     + 0.07943456536662342 * (tmp_internal - 50.0) \
                     - 28.0852963507957 * math.log(tmp_internal - 50.0)
-        green = max(0.0, min(tmp_green, 255.0))
-
-        # blue
+    green = max(0.0, min(tmp_green, 255.0))
     if tmp_internal >= 66.0:
         blue = 255.0
     elif tmp_internal <= 20.0:
@@ -150,4 +143,4 @@ def get_cryptomatte_name(name: str) -> str:
 
 
 def get_cryptomatte_hash(name: str) -> str:
-    return "%08x" % murmurh3_32(str(name))
+    return "%08x" % murmurh3_32(name)

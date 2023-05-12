@@ -251,22 +251,7 @@ class Engine:
                 'object_id': object_id,
             }
 
-        elif filter_type == 'EAW':
-            world = self.rpr_context.get_image(pyrpr.AOV_WORLD_COORDINATE)
-            object_id = self.rpr_context.get_image(pyrpr.AOV_OBJECT_ID)
-            depth = self.rpr_context.get_image(pyrpr.AOV_DEPTH)
-            shading = self.rpr_context.get_image(pyrpr.AOV_SHADING_NORMAL)
-
-            inputs = {
-                'color': color,
-                'normal': shading,
-                'depth': depth,
-                'trans': object_id,
-                'world_coordinate': world,
-                'object_id': object_id,
-            }
-
-        elif filter_type == 'LWR':
+        elif filter_type in ['EAW', 'LWR']:
             world = self.rpr_context.get_image(pyrpr.AOV_WORLD_COORDINATE)
             object_id = self.rpr_context.get_image(pyrpr.AOV_OBJECT_ID)
             depth = self.rpr_context.get_image(pyrpr.AOV_DEPTH)

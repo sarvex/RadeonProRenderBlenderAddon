@@ -78,25 +78,19 @@ def update_2_79_environment():
     if ibl_type is not None:
         world.rpr.ibl_type = {0: 'COLOR', 1: 'IBL'}[ibl_type]
 
-    # Environment light
-    color = ibl.get('color', None)
-    if color:
+    if color := ibl.get('color', None):
         world.rpr.ibl_color = color[:]
 
-    ibl_image = ibl.get('ibl_image', None)
-    if ibl_image:
+    if ibl_image := ibl.get('ibl_image', None):
         world.rpr.ibl_image = ibl_image
 
     intensity = ibl.get('intensity', None)
     if intensity is not None:
         world.rpr.ibl_intensity = intensity
 
-    # Rotation Gizmo
-    gizmo_object = environment.get('gizmo', None)
-    if gizmo_object:
+    if gizmo_object := environment.get('gizmo', None):
         world.rpr.gizmo = gizmo_object
-    gizmo_rotation = environment.get('gizmo_rotation', None)
-    if gizmo_rotation:
+    if gizmo_rotation := environment.get('gizmo_rotation', None):
         world.rpr.gizmo_rotation = gizmo_rotation
 
     # TODO Import Environment Overrides
@@ -115,6 +109,11 @@ def update_2_79_object(obj):
 
 def update_2_79_light(light):
     """ Import Physical lights data from light.rpr_lamp"""
+    if 'rpr_lamp' not in light.keys():
+        return
+    rpr_lamp = light['rpr_lamp']
+    rpr_lamp = rpr_lamp.to_dict()
+
     convert = (
         'intensity',
         'use_temperature',
@@ -126,56 +125,50 @@ def update_2_79_light(light):
         'intensity_normalization',
     )
 
-    if 'rpr_lamp' in light.keys():
-        rpr_lamp = light['rpr_lamp']
-        rpr_lamp = rpr_lamp.to_dict()
+    for name in convert:
+        value = rpr_lamp.get(name, None)
+        if value is not None:
+            setattr(light.rpr, name, value)
 
-        for name in convert:
-            value = rpr_lamp.get(name, None)
-            if value is not None:
-                setattr(light.rpr, name, value)
+    if color := rpr_lamp.get('color', None):
+        light.color = color[:]
 
-        color = rpr_lamp.get('color', None)
-        if color:
-            light.color = color[:]
+    shape = rpr_lamp.get('shape', None)
+    if shape is not None:
+        light.rpr.shape = {0: 'SQUARE', 1: 'RECTANGLE', 2: 'DISK', 3: 'ELLIPSE', 4: 'MESH'}[shape]
 
-        shape = rpr_lamp.get('shape', None)
-        if shape is not None:
-            light.rpr.shape = {0: 'SQUARE', 1: 'RECTANGLE', 2: 'DISK', 3: 'ELLIPSE', 4: 'MESH'}[shape]
+    intensity_units_point = rpr_lamp.get('intensity_units_point', None)
+    if intensity_units_point is not None:
+        light.rpr.intensity_units_point =\
+            {0: 'DEFAULT', 1: 'WATTS', 2: 'LUMEN'}[intensity_units_point]
 
-        intensity_units_point = rpr_lamp.get('intensity_units_point', None)
-        if intensity_units_point is not None:
-            light.rpr.intensity_units_point =\
-                {0: 'DEFAULT', 1: 'WATTS', 2: 'LUMEN'}[intensity_units_point]
+    intensity_units_dir = rpr_lamp.get('intensity_units_dir', None)
+    if intensity_units_dir is not None:
+        light.rpr.intensity_units_dir =\
+            {0: 'DEFAULT', 1: 'RADIANCE', 2: 'LUMINANCE'}[intensity_units_dir]
 
-        intensity_units_dir = rpr_lamp.get('intensity_units_dir', None)
-        if intensity_units_dir is not None:
-            light.rpr.intensity_units_dir =\
-                {0: 'DEFAULT', 1: 'RADIANCE', 2: 'LUMINANCE'}[intensity_units_dir]
+    intensity_units_area = rpr_lamp.get('intensity_units_area', None)
+    if intensity_units_area is not None:
+        light.rpr.intensity_units_area =\
+            {0: 'DEFAULT', 1: 'WATTS', 2: 'LUMEN', 3: 'RADIANCE', 4: 'LUMINANCE'}[intensity_units_area]
 
-        intensity_units_area = rpr_lamp.get('intensity_units_area', None)
-        if intensity_units_area is not None:
-            light.rpr.intensity_units_area =\
-                {0: 'DEFAULT', 1: 'WATTS', 2: 'LUMEN', 3: 'RADIANCE', 4: 'LUMINANCE'}[intensity_units_area]
+    if color_map := rpr_lamp.get('color_map', None):
+        light.rpr.color_map = color_map
 
-        color_map = rpr_lamp.get('color_map', None)
-        if color_map:
-            light.rpr.color_map = color_map
+    size1 = rpr_lamp.get('size_1', 0.1)
+    size2 = rpr_lamp.get('size_2', 0.1)
+    if light.type == 'AREA':
+        if light.size == 0.0:
+            light.size = size1
+        if light.size_y == 0.0:
+            light.size_y = size2
 
-        size1 = rpr_lamp.get('size_1', 0.1)
-        size2 = rpr_lamp.get('size_2', 0.1)
-        if light.type == 'AREA':
-            if light.size == 0.0:
-                light.size = size1
-            if light.size_y == 0.0:
-                light.size_y = size2
+    group = rpr_lamp.get('group', 1)
+    light.rpr.group = {0: 'KEY', 1: 'FILL'}[group]
 
-        group = rpr_lamp.get('group', 1)
-        light.rpr.group = {0: 'KEY', 1: 'FILL'}[group]
-
-        mesh_obj = rpr_lamp.get('mesh_obj', None)
-        if mesh_obj is not None:
-            if isinstance(mesh_obj, bpy.types.Mesh):
-                light.rpr.mesh = mesh_obj
-            elif isinstance(mesh_obj, bpy.types.Object):
-                light.rpr.mesh = mesh_obj.data
+    mesh_obj = rpr_lamp.get('mesh_obj', None)
+    if mesh_obj is not None:
+        if isinstance(mesh_obj, bpy.types.Mesh):
+            light.rpr.mesh = mesh_obj
+        elif isinstance(mesh_obj, bpy.types.Object):
+            light.rpr.mesh = mesh_obj.data

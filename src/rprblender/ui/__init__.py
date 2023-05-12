@@ -104,13 +104,13 @@ def get_panels():
         'WORLD_PT_world',
     }
 
-    panels = []
-    for t in bpy.types.Panel.__subclasses__():
-        if hasattr(t, 'COMPAT_ENGINES') and 'BLENDER_RENDER' in t.COMPAT_ENGINES:
-            if t.__name__ not in exclude_panels:
-                panels.append(t)
-
-    return panels
+    return [
+        t
+        for t in bpy.types.Panel.__subclasses__()
+        if hasattr(t, 'COMPAT_ENGINES')
+        and 'BLENDER_RENDER' in t.COMPAT_ENGINES
+        and t.__name__ not in exclude_panels
+    ]
 
 
 from . import (

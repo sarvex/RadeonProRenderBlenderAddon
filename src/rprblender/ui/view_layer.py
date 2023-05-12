@@ -83,7 +83,7 @@ class RPR_RENDER_PT_denoiser(RPR_Panel):
             col.prop(denoiser, 'ml_use_fp16_compute_type')
 
         else:
-            raise TypeError("No such filter type: %s" % denoiser.filter_type)
+            raise TypeError(f"No such filter type: {denoiser.filter_type}")
 
 
 class RPR_RENDER_PT_override(RPR_Panel):

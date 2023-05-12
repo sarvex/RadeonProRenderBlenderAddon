@@ -88,15 +88,12 @@ def copy_rif_sdk():
     shutil.copytree(str(rif_dir / "models"), str(sdk_rif_dir / "models"))
 
     # getting rif bin_dir
-    if OS == 'Windows':
-        os_str = "Windows"
-    elif OS == 'Linux':
+    if OS == 'Linux':
         os_str = "Ubuntu20"
-    else:   # Darwin
-        if PROC == 'x86_64':
-            os_str = "OSX"
-        else:
-            os_str = "MacOS_ARM"
+    elif OS == 'Windows':
+        os_str = "Windows"
+    else:
+        os_str = "OSX" if PROC == 'x86_64' else "MacOS_ARM"
     bin_dir = rif_dir / os_str / "Dynamic"
 
     # copying inc files

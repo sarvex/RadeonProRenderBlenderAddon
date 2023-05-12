@@ -419,10 +419,9 @@ class NodeItem:
         if isinstance(self.data, float) and math.isclose(self.data, 0.0):
             return True
 
-        if isinstance(self.data, tuple) and \
-           math.isclose(self.data[0], 0.0) and \
-           math.isclose(self.data[1], 0.0) and \
-           math.isclose(self.data[2], 0.0):
-            return True
-
-        return False
+        return bool(
+            isinstance(self.data, tuple)
+            and math.isclose(self.data[0], 0.0)
+            and math.isclose(self.data[1], 0.0)
+            and math.isclose(self.data[2], 0.0)
+        )

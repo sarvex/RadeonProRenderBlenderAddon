@@ -40,7 +40,7 @@ def get_library_path() -> str:
 
     # if config/configdev override setting used
     if material_library_path:
-        log("config.material_library_path: {}".format(material_library_path))
+        log(f"config.material_library_path: {material_library_path}")
         return material_library_path
 
     # if debug/development environment override used
@@ -48,7 +48,7 @@ def get_library_path() -> str:
         return os.environ[DEV_ENVIRONMENT_VARIABLE]
 
     # Read the path from the registry if running in Windows.
-    if 'Windows' == platform.system():
+    if platform.system() == 'Windows':
         import winreg
 
         # Open the key.
@@ -56,13 +56,13 @@ def get_library_path() -> str:
         try:  # try ML2.0 registry path
             key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, WIN_MATLIB_2_REGKEY)
         except OSError as e:
-            log("Unable to find ML2.0 registry key: {}".format(e))
+            log(f"Unable to find ML2.0 registry key: {e}")
 
         if not key:  # try the ML1.0 path
             try:
                 key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, WIN_MATLIB_1_REGKEY)
             except OSError as e:
-                log("Unable to find ML1.0 registry key: {}".format(e))
+                log(f"Unable to find ML1.0 registry key: {e}")
 
         if key:
             try:
@@ -70,14 +70,14 @@ def get_library_path() -> str:
                 result = winreg.QueryValueEx(key, "MaterialLibraryPath")
                 winreg.CloseKey(key)
             except OSError as e:
-                log("Unable to load Material Library path from registry: {}".format(e))
+                log(f"Unable to load Material Library path from registry: {e}")
             else:
                 if result and result[0] and isinstance(result[0], str):
                     path = result[0]
                     if os.path.isdir(path):
                         return path
 
-    elif 'Linux' == platform.system():
+    elif platform.system() == 'Linux':
         home = Path.home()
 
         # check for separate installation location first
@@ -89,16 +89,16 @@ def get_library_path() -> str:
         if matlib_installed.exists():
             matlib_path = Path(matlib_installed.read_text())
             matlib_path = str(matlib_path)
-            if matlib_path and os.path.isdir(matlib_path + "/Xml"):  # Material Library 2.0
+            if matlib_path and os.path.isdir(f"{matlib_path}/Xml"):  # Material Library 2.0
                 log.info("Material Library 2.0 found")
-                return matlib_path + "/Xml"
+                return f"{matlib_path}/Xml"
 
             # Material Library 1.0
             log.info("Material Library 1.0 found")
             if os.path.isdir(matlib_path):
                 return matlib_path
 
-    elif 'Darwin' == platform.system():
+    elif platform.system() == 'Darwin':
         # Material Library 2.0 separate lib
         if os.path.isdir(UBUNTU_MATLIB_2_SEPARATED):
             return UBUNTU_MATLIB_2_SEPARATED

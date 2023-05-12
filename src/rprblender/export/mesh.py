@@ -87,8 +87,7 @@ class MeshData:
         uv_mesh.calc_loop_triangles()
 
 
-        primary_uv = uv_mesh.rpr.primary_uv_layer
-        if primary_uv:
+        if primary_uv := uv_mesh.rpr.primary_uv_layer:
             uvs = get_data_from_collection(primary_uv.data, 'uv', (len(primary_uv.data), 2))
             uv_indices = get_data_from_collection(mesh.loop_triangles, 'loops',
                                                   (tris_len * 3,), np.int32)
@@ -98,8 +97,7 @@ class MeshData:
                 data.uv_indices.append(uv_indices)
 
             if obj:
-                secondary_uv = uv_mesh.rpr.secondary_uv_layer(obj)
-                if secondary_uv:
+                if secondary_uv := uv_mesh.rpr.secondary_uv_layer(obj):
                     uvs = get_data_from_collection(secondary_uv.data, 'uv', (len(secondary_uv.data), 2))
                     if len(uvs) > 0:
                         data.uvs.append(uvs)
@@ -118,9 +116,13 @@ class MeshData:
             color_data = mesh.vertex_colors.active.data
             # getting vertex colors and its indices (the same as uv_indices)
             colors = get_data_from_collection(color_data, 'color', (len(color_data), 4))
-            color_indices = data.uv_indices[0] if (data.uv_indices is not None and len(data.uv_indices) > 0) else \
-                get_data_from_collection(mesh.loop_triangles, 'loops',
-                                         (tris_len * 3,), np.int32)
+            color_indices = (
+                data.uv_indices[0]
+                if data.uv_indices is not None and data.uv_indices
+                else get_data_from_collection(
+                    mesh.loop_triangles, 'loops', (tris_len * 3,), np.int32
+                )
+            )
 
             # preparing vertex_color buffer with the same size as vertices and
             # setting its data by indices from vertex colors
@@ -234,9 +236,7 @@ def assign_materials(rpr_context: RPRContext, rpr_shape: pyrpr.Shape, obj: bpy.t
 
         log(f"Syncing material '{slot.name}'; {slot}")
 
-        rpr_material = material.sync(rpr_context, slot.material, obj=obj)
-
-        if rpr_material:
+        if rpr_material := material.sync(rpr_context, slot.material, obj=obj):
             if len(material_unique_indices) == 1:
                 rpr_shape.set_material(rpr_material)
             else:
@@ -436,8 +436,7 @@ def sync_update(rpr_context: RPRContext, obj: bpy.types.Object, is_updated_geome
 
     obj_key = object.key(obj)
     mesh_key = obj.data.name_full
-    rpr_shape = rpr_context.objects.get(obj_key, None)
-    if rpr_shape:
+    if rpr_shape := rpr_context.objects.get(obj_key, None):
         if is_updated_geometry:
             rpr_context.remove_object(obj_key)
             if mesh_key in rpr_context.mesh_masters:
@@ -450,7 +449,7 @@ def sync_update(rpr_context: RPRContext, obj: bpy.types.Object, is_updated_geome
 
         indirect_only = kwargs.get("indirect_only", False)
         material_override = kwargs.get("material_override", None)
-        
+
         sync_visibility(rpr_context, obj, rpr_shape, indirect_only=indirect_only)
         assign_materials(rpr_context, rpr_shape, obj, material_override)
         return True

@@ -33,7 +33,7 @@ def try_install_pip():
         pass
 
     print("Downloading get-pip.py")
-    file_name = tempfile.gettempdir() + "/get-pip.py"
+    file_name = f"{tempfile.gettempdir()}/get-pip.py"
     urllib.request.urlretrieve(GET_PIP_URL, file_name)
 
     try:

@@ -306,9 +306,9 @@ class RPR_UserSettings(bpy.types.PropertyGroup):
     viewport_denoiser_upscale: BoolProperty(
         name="Viewport Denoising and Upscaling",
         description="Denoise rendered image with Machine Learning denoiser.\n"
-                    "Rendering at 2 times lower resoluting then upscaling rendered image "
-                    "in the end of render",
-        default=True if not utils.IS_MAC else False,  # TODO remove when macos upscaler fixed
+        "Rendering at 2 times lower resoluting then upscaling rendered image "
+        "in the end of render",
+        default=bool(not utils.IS_MAC),
     )
 
 
@@ -504,14 +504,13 @@ class RPR_RenderProperties(RPR_Properties):
     def toggle_denoiser(self, context):
         if self.final_render_denoise:
             bpy.ops.rpr.add_denoiser_node()
-        else:
-            if bpy.context.scene.use_nodes:
-                nt = bpy.context.scene.node_tree
+        elif bpy.context.scene.use_nodes:
+            nt = bpy.context.scene.node_tree
 
-                # add compositor node
-                denoiser_node = next((node for node in nt.nodes if isinstance(node, bpy.types.CompositorNodeDenoise)), None)
-                if not denoiser_node is None:
-                    denoiser_node.mute = True
+            # add compositor node
+            denoiser_node = next((node for node in nt.nodes if isinstance(node, bpy.types.CompositorNodeDenoise)), None)
+            if denoiser_node is not None:
+                denoiser_node.mute = True
 
     final_render_denoise: BoolProperty(
         name="Denoise",
@@ -543,7 +542,7 @@ class RPR_RenderProperties(RPR_Properties):
     ]
 
     def update_final_render_preset(self, context):
-        quality = self.final_render_quality.lower() + '.py'
+        quality = f'{self.final_render_quality.lower()}.py'
         mode = self.final_render_mode.lower()
         preset_path = str(preset_root_dir() / "final" / mode / quality)
         bpy.ops.script.execute_preset(filepath=preset_path, menu_idname='RPR_RENDER_PT_quality')
@@ -558,7 +557,7 @@ class RPR_RenderProperties(RPR_Properties):
     )
 
     def update_viewport_render_preset(self, context):
-        quality = self.viewport_render_quality.lower() + '.py'
+        quality = f'{self.viewport_render_quality.lower()}.py'
         mode = self.viewport_render_mode.lower()
         preset_path = str(preset_root_dir() / "viewport" / mode / quality)
         bpy.ops.script.execute_preset(filepath=preset_path, menu_idname='RPR_RENDER_PT_quality')
@@ -620,7 +619,7 @@ class RPR_RenderProperties(RPR_Properties):
         """ Initializes rpr_context by device settings """
 
         scene = self.id_data
-        log("Syncing scene: %s" % scene.name)
+        log(f"Syncing scene: {scene.name}")
 
         devices = self.get_devices(is_final_engine)
 
@@ -640,7 +639,7 @@ class RPR_RenderProperties(RPR_Properties):
                     context_flags |= {pyrpr.CREATION_FLAGS_ENABLE_GL_INTEROP}
 
                 if not metal_enabled and platform.system() == 'Darwin'\
-                        and not isinstance(rpr_context, context.RPRContext2):
+                            and not isinstance(rpr_context, context.RPRContext2):
                     # only enable metal once and if a GPU is turned on
                     metal_enabled = True
                     context_flags |= {pyrpr.CREATION_FLAGS_ENABLE_METAL}
@@ -656,10 +655,16 @@ class RPR_RenderProperties(RPR_Properties):
         #  this functionality requires additional memory on
         #  both CPU and GPU even when no per-face materials set in scene.
         #  checking has_multimaterial_object before enable CONTEXT_CREATEPROP_HYBRID_ENABLE_PER_FACE_MATERIALS.
-        if isinstance(rpr_context, RPRContextHybridPro):
-            if next((True for i in bpy.context.scene.objects
-                     if len(i.material_slots) > 1 and len([m for m in i.material_slots if m.material]) > 1), False):
-                context_props.extend([pyrpr.CONTEXT_CREATEPROP_HYBRID_ENABLE_PER_FACE_MATERIALS, pyrpr.ffi.new('int*', 1)])
+        if isinstance(rpr_context, RPRContextHybridPro) and next(
+            (
+                True
+                for i in bpy.context.scene.objects
+                if len(i.material_slots) > 1
+                and len([m for m in i.material_slots if m.material]) > 1
+            ),
+            False,
+        ):
+            context_props.extend([pyrpr.CONTEXT_CREATEPROP_HYBRID_ENABLE_PER_FACE_MATERIALS, pyrpr.ffi.new('int*', 1)])
 
         context_props.append(0)  # should be followed by 0
 
@@ -740,8 +745,10 @@ class RPR_RenderProperties(RPR_Properties):
         return res
 
     def export_render_mode(self, rpr_context):
-        return rpr_context.set_parameter(pyrpr.CONTEXT_RENDER_MODE,
-                                         getattr(pyrpr, 'RENDER_MODE_' + self.render_mode))
+        return rpr_context.set_parameter(
+            pyrpr.CONTEXT_RENDER_MODE,
+            getattr(pyrpr, f'RENDER_MODE_{self.render_mode}'),
+        )
 
     def is_contour_available(self, is_final_engine):
         devices = self.get_devices(is_final_engine=is_final_engine)
@@ -760,14 +767,14 @@ class RPR_RenderProperties(RPR_Properties):
         if self.final_render_mode == 'FULL':
             return False
 
-        quality = getattr(pyrpr, 'RENDER_QUALITY_' + self.final_render_mode)
+        quality = getattr(pyrpr, f'RENDER_QUALITY_{self.final_render_mode}')
         return rpr_context.set_parameter(pyrpr.CONTEXT_RENDER_QUALITY, quality)
 
     def export_viewport_render_quality(self, rpr_context):
         if self.viewport_render_mode == 'FULL':
             return False
 
-        quality = getattr(pyrpr, 'RENDER_QUALITY_' + self.viewport_render_mode)
+        quality = getattr(pyrpr, f'RENDER_QUALITY_{self.viewport_render_mode}')
         return rpr_context.set_parameter(pyrpr.CONTEXT_RENDER_QUALITY, quality)
 
     @classmethod

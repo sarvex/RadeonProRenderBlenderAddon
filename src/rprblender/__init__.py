@@ -62,7 +62,7 @@ from .engine.viewport_engine_hybridpro import ViewportEngine as ViewportEngineHy
 from .engine.animation_engine_hybridpro import AnimationEngine as AnimationEngineHybridPro
 
 log = logging.Log(tag='init')
-log("Loading RPR addon {}".format(bl_info['version']))
+log(f"Loading RPR addon {bl_info['version']}")
 
 
 render_engine_cls = {

@@ -36,16 +36,16 @@ def init(log_fun, rprsdk_bin_path):
     _module = __import__(__name__)
 
     _init_data._log_fun = log_fun
-    
+
     lib_platform = ""
     rel_path = "../../../RadeonProRender-GLTF"
-    if "Windows" == platform.system():
+    if platform.system() == "Windows":
         lib_name = 'ProRenderGLTF.dll'
         lib_platform = "Win/lib"
-    elif "Linux" == platform.system():
+    elif platform.system() == "Linux":
         lib_name = 'libProRenderGLTF.so'
         lib_platform = "Linux-Ubuntu/lib"
-    elif "Darwin" == platform.system():
+    elif platform.system() == "Darwin":
         lib_name = "libProRenderGLTF.dylib"
         lib_platform = "Mac/lib"
     else:

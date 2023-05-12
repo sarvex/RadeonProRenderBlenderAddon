@@ -45,19 +45,21 @@ class Filter(logging.Filter):
         self.level_show_always = level_show_always
 
     def filter(self, record: logging.LogRecord):
-        if self.level_show_always is not None:
-            if record.levelno >= self.level_show_always:
-                return True
+        if (
+            self.level_show_always is not None
+            and record.levelno >= self.level_show_always
+        ):
+            return True
         return super().filter(record)
 
 
 def is_level_allowed(levelno):
     if not console_filter:
         return True
-    if console_filter.level_show_min is not None:
-        if levelno < console_filter.level_show_min:
-            return False
-    return True
+    return (
+        console_filter.level_show_min is None
+        or levelno >= console_filter.level_show_min
+    )
 
 
 def limit_log(name, level_show_always=logging.INFO, level_show_min=logging.DEBUG):
@@ -66,7 +68,7 @@ def limit_log(name, level_show_always=logging.INFO, level_show_min=logging.DEBUG
         console.removeFilter(console_filter)
         console_filter = None
     if name is not None:
-        console_filter = Filter('rpr.'+name, level_show_always, level_show_min)
+        console_filter = Filter(f'rpr.{name}', level_show_always, level_show_min)
         console.addFilter(console_filter)
 
 

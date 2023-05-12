@@ -37,10 +37,7 @@ class RPR_MATERIAL_LIBRARY_OP_import_material(RPR_Operator):
 
         properties = context.window_manager.rpr_material_library_properties
 
-        material_id = properties.materials
-
-        # check if library have anything to import
-        if material_id:
+        if material_id := properties.materials:
             xml_path, material_name = library.get_material_xml(material_id)
             material_library.import_xml_material(context.material, material_name, xml_path, properties.copy_textures)
 

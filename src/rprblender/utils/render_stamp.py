@@ -156,11 +156,8 @@ if IS_WIN:
                 buffer_length = width * height * 4
 
                 # clip by image size
-                if width > image_width:
-                    width = image_width
-                if height > image_height:
-                    height = image_height
-
+                width = min(width, image_width)
+                height = min(height, image_height)
                 r = RECT()
                 r.left = 0
                 r.top = 2  # offset text a little bit down

@@ -71,8 +71,7 @@ class RPRContext(context.RPRContext):
         if self.is_aov_enabled(aov_type):
             return
 
-        fbs = {}
-        fbs['aov'] = pyrpr.FrameBuffer(self.context, self.width, self.height)
+        fbs = {'aov': pyrpr.FrameBuffer(self.context, self.width, self.height)}
         fbs['aov'].set_name("%d_aov" % aov_type)
         fbs['res'] = fbs['aov']
         self.context.attach_aov(aov_type, fbs['aov'])

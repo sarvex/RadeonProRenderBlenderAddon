@@ -66,12 +66,12 @@ class ViewportEngine(viewport_engine.ViewportEngine):
 
     def setup_upscale_filter(self, settings):
         res = False
-        scene = bpy.context.scene
-
         # UPSCALER_FSR2 works only if denoiser is enabled
         self.is_upscaled = settings['enable'] and self.is_denoised
         if self.is_upscaled:
             res |= self.rpr_context.set_parameter(pyrpr.CONTEXT_UPSCALER, pyrpr.UPSCALER_FSR2)
+            scene = bpy.context.scene
+
             res |= self.rpr_context.set_parameter(pyrpr.CONTEXT_FSR2_QUALITY,
                                                  getattr(pyrpr, scene.rpr.viewport_upscale_quality))
         else:

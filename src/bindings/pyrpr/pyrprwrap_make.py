@@ -34,11 +34,18 @@ api = pyrprapi.load(api_desc_fpath)
 def format_arg_decl(arg, default):
     if default is None:
         return arg
-    return arg + '=' + ({'false': 'False', 'true': 'True'}.get(default, default))
+    return f'{arg}=' + ({'false': 'False', 'true': 'True'}.get(default, default))
 
 
 def print_function_header(name, args_names, args_defaults, doc):
-    print('def', name + '(' + ', '.join(format_arg_decl(a, d) for a, d, in zip(args_names, args_defaults)) + '):')
+    print(
+        'def',
+        f'{name}('
+        + ', '.join(
+            format_arg_decl(a, d) for a, d, in zip(args_names, args_defaults)
+        )
+        + '):',
+    )
 
     if doc is None:
         return
@@ -59,24 +66,17 @@ for name, c in api.constants.items():
     prefix = 'RPR_'
     if name.startswith(prefix):
         short_name = name[len(prefix):]
-        print('{} = {}'.format(short_name, pyrprapi.eval_constant(c.value)))
+        print(f'{short_name} = {pyrprapi.eval_constant(c.value)}')
         constants_names.append(short_name)
 
 print('_constants_names =', repr(constants_names))
 
 types_names = []
 for name, t in api.types.items():
-    if 'struct' == t.kind:
-        pass
-    else:
-        pass
     for prefix in ['_rpr', 'rpr_']:
         if name.startswith(prefix):
             short_name = name[len(prefix):]
-            for n in [short_name]:
-                # print('{} = {}'.format(n, name))
-                types_names.append(n)
-
+            types_names.extend(iter([short_name]))
 print('_types_names =', repr(types_names))
 
 functions_names = []
@@ -131,9 +131,9 @@ for name, t in api.functions.items():
     def get_arg(arg, replaced):
         if not replaced:
             return arg
-        if 'value' == replaced:
+        if replaced == 'value':
             return '{0}._get_handle() if {0} else ffi.NULL'.format(arg)
-        if 'pointer' == replaced:
+        if replaced == 'pointer':
             return '{0}._handle_ptr if {0} else ffi.NULL'.format(arg)
 
 

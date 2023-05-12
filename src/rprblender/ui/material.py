@@ -40,10 +40,7 @@ class RPR_MATERIAL_PT_context(RPR_Panel):
 
         if object:
             is_sortable = len(object.material_slots) > 1
-            rows = 1
-            if is_sortable:
-                rows = 4
-
+            rows = 4 if is_sortable else 1
             row = layout.row()
 
             row.template_list("MATERIAL_UL_matslots", "", object, "material_slots", object, "active_material_index", rows=rows)
@@ -130,10 +127,10 @@ class RPR_MATERIAL_PT_surface(RPR_MaterialOutputSocket):
             return
 
         # check for Principled BSDF
-        if output_node and "Surface" in output_node.inputs:
+        if "Surface" in output_node.inputs:
             surface_socket = output_node.inputs['Surface']
             if surface_socket.is_linked and \
-                surface_socket.links[0].from_node.bl_idname == 'ShaderNodeBsdfPrincipled':
+                    surface_socket.links[0].from_node.bl_idname == 'ShaderNodeBsdfPrincipled':
                 layout.operator('rpr.principled_to_uber')
 
         input = output_node.inputs[self.bl_label]

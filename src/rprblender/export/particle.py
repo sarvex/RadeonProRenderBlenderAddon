@@ -77,14 +77,14 @@ def sync(rpr_context, emitter: bpy.types.Object):
         rpr_context.scene.attach(master_shape)
         master_shape.set_visibility(False)
 
-        # add the material to master
-        rpr_material = get_particle_system_material(rpr_context, p_sys, emitter)
-        if rpr_material:
+        if rpr_material := get_particle_system_material(
+            rpr_context, p_sys, emitter
+        ):
             master_shape.set_material(rpr_material)
 
         # walk through particle list and create rpr_instances of ones that are ALIVE
         for i, particle in p_sys.particles.items():
-            if not particle.alive_state == 'ALIVE':
+            if particle.alive_state != 'ALIVE':
                 continue
 
             instance_key = (particle_key, i)

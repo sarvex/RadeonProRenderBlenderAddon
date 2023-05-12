@@ -238,6 +238,8 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
             self.depth = 0
 
 
+
+
     class Function(Type):
 
         def __init__(self, name, returns, args):
@@ -246,7 +248,7 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
             self.args = args
 
         def __repr__(self):
-            return 'function:  '+str(types[self.returns])+self.name+str(self.args)
+            return f'function:  {str(types[self.returns])}{self.name}{str(self.args)}'
 
         def get_name_for_typedef(self):
             assert False
@@ -256,7 +258,11 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
 
         def generate_cdecl(self):
             desc = self.generate_desc()
-            return desc.restype + ' ' + desc.name + '('+', '.join(arg.type+' '+arg.name for arg in desc.args)+');'
+            return (
+                f'{desc.restype} {desc.name}('
+                + ', '.join(f'{arg.type} {arg.name}' for arg in desc.args)
+                + ');'
+            )
 
         def generate_desc(self):
             return FunctionDesc(self.name,
@@ -267,6 +273,9 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
             self.depth = 0
 
 
+
+
+
     class Typedef(Type):
 
         def __init__(self, name, typedef_type):
@@ -274,7 +283,7 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
             self.typedef_type = typedef_type
 
         def __repr__(self):
-            return 'typedef '+repr((self.name, types.get(self.typedef_type, self.typedef_type)))
+            return f'typedef {repr((self.name, types.get(self.typedef_type, self.typedef_type)))}'
 
         def get_name_for_typedef(self):
             return self.name
@@ -300,6 +309,9 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
                 else:
                     self.depth = 0
 
+
+
+
     class Pointer(Type):
 
         def __init__(self, type):
@@ -307,15 +319,15 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
             self.pointer_type = type
 
         def __repr__(self):
-            return 'pointer to '+repr(types.get(self.pointer_type, self.pointer_type))
+            return f'pointer to {repr(types.get(self.pointer_type, self.pointer_type))}'
 
         def get_name_for_typedef(self):
             assert self.pointer_type in types
-            return types[self.pointer_type].get_name_for_typedef()+'*'
+            return f'{types[self.pointer_type].get_name_for_typedef()}*'
 
         def get_name_for_var_decl(self):
             assert self.pointer_type in types
-            return types[self.pointer_type].get_name_for_typedef()+'*'
+            return f'{types[self.pointer_type].get_name_for_typedef()}*'
 
         def generate_cdecl(self):
             # assert self.pointer_type in types, self.pointer_type
@@ -332,13 +344,16 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
                 else:
                     self.depth = 0
 
+
+
+
     class Callback(Type):
         def __init__(self, type):
             super().__init__('~~function~~')
             self.function_type = type
 
         def __repr__(self):
-            return 'pointer to function ' + repr(types.get(self.function_type, self.function_type))
+            return f'pointer to function {repr(types.get(self.function_type, self.function_type))}'
 
         def get_name_for_typedef(self):
             assert self.function_type in types
@@ -365,6 +380,9 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
                 else:
                     self.depth = 0
 
+
+
+
     class CvQualifiedType(Type):
 
         def __init__(self, type, const):
@@ -378,7 +396,7 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
 
         def get_name_for_typedef(self):
             assert self.type in types
-            return types[self.type].get_name_for_typedef()+' const' if self.const else ''
+            return f'{types[self.type].get_name_for_typedef()} const' if self.const else ''
 
         def get_name_for_var_decl(self):
             return self.get_name_for_typedef()
@@ -399,6 +417,9 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
                     self.depth = 0
 
 
+
+
+
     class Struct(Type):
 
         def __init__(self, name, fields):
@@ -406,11 +427,11 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
             self.fields = fields
 
         def __repr__(self):
-            return 'struct:'+str((self.name, [repr(members.get(id, id)) for id in self.fields] ))
+            return f'struct:{(self.name, [repr(members.get(id, id)) for id in self.fields])}'
 
         def get_name_for_typedef(self):
             # case for "typedef struct {}* typename;" which cffi can't parse
-            return 'struct ' + self.name
+            return f'struct {self.name}'
 
         def generate_cdecl(self):
 
@@ -420,7 +441,7 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
             lines.append(' '.join(['struct', desc.name, '{']))
 
             for m in desc.members:
-                lines.append('    '+m.type+' '+m.name+' hello;')
+                lines.append(f'    {m.type} {m.name} hello;')
 
             lines.append('};')
             return '\n'.join(lines)
@@ -442,6 +463,7 @@ def export(header_file, includes, json_file_name, prefixes, castxml, exclude=Non
 
 
             self.depth = 1+max((members[field][1].depth for field in self.fields if field in members), default=-1)
+
 
     types = {c.get('id'): Type(c.get('name')) for c in root.findall('FundamentalType')}
 

@@ -42,14 +42,12 @@ class RPR_MATERIL_PT_material_browser(RPR_Panel):
 
         show_preview = properties.mode == "CATEGORIES" or properties.info_type == "MATERIAL"
 
+        row = layout.row()
         # Category selector.
         if properties.mode == "CATEGORIES":
-            row = layout.row()
             row.prop(properties, "categories", text="")
 
-        # Search field.
         else:
-            row = layout.row()
             row.prop(properties, "search", text="", icon="VIEWZOOM")
 
             # search string is too short info
@@ -58,15 +56,13 @@ class RPR_MATERIL_PT_material_browser(RPR_Panel):
                 layout.label(text="Please enter at least 2 characters.")
                 layout.label(text="")
 
-            # Search results not found info
             elif properties.info_type == "SEARCH_NOT_FOUND":
-                layout.label(text="Search: '" + properties.search_string + "'")
+                layout.label(text=f"Search: '{properties.search_string}'")
                 layout.label(text="No materials found.")
                 layout.label(text="")
 
-            # Display search string for current results
             else:
-                layout.label(text="Search: '" + properties.search_string + "'")
+                layout.label(text=f"Search: '{properties.search_string}'")
 
         if show_preview:
             row = layout.row()

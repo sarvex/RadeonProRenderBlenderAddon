@@ -94,20 +94,20 @@ def iter_materials(root):
 
 def compile_material_from_xml(xml_path: str, node_tree, image_loader):
     if not xml_path or not os.path.isfile(xml_path):
-        log.error("Unable to find material xml file '{}'".format(xml_path))
+        log.error(f"Unable to find material xml file '{xml_path}'")
         return None
 
     # load material xml
     with open(xml_path) as data_file:
         if not data_file:
-            log.error("Unable to open material xml file '{}'".format(xml_path))
+            log.error(f"Unable to open material xml file '{xml_path}'")
             return None
         else:
             xml_tree = ElementTree.parse(io.StringIO(data_file.read()))
 
-    materials = [mat for mat in xml_tree.getroot().iter(tag='material')]
+    materials = list(xml_tree.getroot().iter(tag='material'))
     if not materials:
-        log.error("Unable to find material in '{}'".format(xml_path))
+        log.error(f"Unable to find material in '{xml_path}'")
         return None
 
     # read first material info

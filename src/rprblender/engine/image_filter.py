@@ -357,15 +357,15 @@ alpha.x += reflection.x;
 pixel.xyz = background.xyz * (1.0f - alpha.x) + pixel.xyz * alpha.x;
             """
 
-            if use_shadow:
-                # note: "shadow.x / 2.0f" doesn't work correctly, used "* 0.5f" instead
-                code += """
+        if use_shadow:
+            # note: "shadow.x / 2.0f" doesn't work correctly, used "* 0.5f" instead
+            code += """
 vec4 shadow = ReadPixelTyped(shadowImage, coord.x, coord.y);
 float normalized = min(shadow.x * 0.5f, 1.0f);
 pixel.xyz = pixel.xyz * (1.0f - normalized);
 alpha.x = min(alpha.x + normalized, 1.0f);
                 """
-                self.filter.set_parameter('shadowImage', self.inputs['shadow_catcher'])
+            self.filter.set_parameter('shadowImage', self.inputs['shadow_catcher'])
 
         # apply transparent background if needed
         if use_background:

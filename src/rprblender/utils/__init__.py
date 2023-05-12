@@ -243,13 +243,13 @@ def get_data_from_collection(collection, attribute, size, dtype=np.float32):
 
 def has_denoise_node():
     ''' returns true if compositor node in the tree '''
-    composite_tree = bpy.context.scene.node_tree
-    if not composite_tree:
+    if composite_tree := bpy.context.scene.node_tree:
+        return any(
+            isinstance(node, bpy.types.CompositorNodeDenoise)
+            for node in composite_tree.nodes
+        )
+    else:
         return False
-    for node in composite_tree.nodes:
-        if isinstance(node, bpy.types.CompositorNodeDenoise):
-            return True
-    return False
 
 
 def get_prop_array_data(arr, dtype=np.float32):
@@ -276,13 +276,9 @@ def get_sequence_frame_file_path(source_path, frame_number):
     extension = path.suffix
     filename = path.name[:-len(extension)]
 
-    # cut filename by the last non-digit filename character
-    index = 0
-    for i, c in enumerate(reversed(filename)):
-        if not c.isdigit():
-            index = i
-            break
-
+    index = next(
+        (i for i, c in enumerate(reversed(filename)) if not c.isdigit()), 0
+    )
     index = index if index else len(filename)
     filename = filename[:len(filename) - index]
 

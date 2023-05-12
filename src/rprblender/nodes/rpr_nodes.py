@@ -81,7 +81,7 @@ class RPRShaderNodeLayered(RPRShaderNode):
     def init(self, context):
         self.outputs.new('NodeSocketShader', 'Shader')
 
-        self.inputs.new('NodeSocketShader', f'Base Shader')
+        self.inputs.new('NodeSocketShader', 'Base Shader')
 
         for i in range(0, self.MAX_LAYERS_NUMBER):
             self.inputs.new('NodeSocketShader', f'Layer {i+1}').hide_value = True
@@ -99,9 +99,7 @@ class RPRShaderNodeLayered(RPRShaderNode):
             if result:  # no blending with absent base shader
                 for i in range(self.node.layers_number):
                     fac = self.get_input_value(f'Layer {i+1} alpha')
-                    layer = self.get_input_link(f'Layer {i+1}')
-
-                    if layer:
+                    if layer := self.get_input_link(f'Layer {i+1}'):
                         result = self.create_node(pyrpr.MATERIAL_NODE_BLEND, {
                             pyrpr.MATERIAL_INPUT_WEIGHT: fac,
                             pyrpr.MATERIAL_INPUT_COLOR0: result,
@@ -187,7 +185,7 @@ class RPRTextureNodeLayered(RPRShaderNode):
     def init(self, context):
         self.outputs.new('rpr_socket_color', 'Color')
 
-        self.inputs.new('rpr_socket_color', f'Base Texture')
+        self.inputs.new('rpr_socket_color', 'Base Texture')
 
         for i in range(0, self.MAX_LAYERS_NUMBER):
             self.inputs.new('rpr_socket_color', f'Layer {i+1}')
@@ -715,15 +713,14 @@ class RPRShaderNodeImageTexture(RPRShaderNode):
             if not rpr_image:
                 return self.node_item(ERROR_IMAGE_COLOR)
 
-            image_wrap_val = getattr(pyrpr, 'IMAGE_WRAP_TYPE_' + self.node.wrap)
+            image_wrap_val = getattr(pyrpr, f'IMAGE_WRAP_TYPE_{self.node.wrap}')
             rpr_image.set_wrap(image_wrap_val)
 
             rpr_node = self.create_node(pyrpr.MATERIAL_NODE_IMAGE_TEXTURE, {
                 pyrpr.MATERIAL_INPUT_DATA: rpr_image
             })
 
-            uv = self.get_input_link('UV')
-            if uv:
+            if uv := self.get_input_link('UV'):
                 rpr_node.set_input(pyrpr.MATERIAL_INPUT_UV, uv)
 
             return rpr_node
@@ -770,25 +767,23 @@ class RPRShaderNodeLookup(RPRShaderNode):
         }
 
         def export(self):
-            if self.node.lookup_type == 'VERTEX_COLOR':
-                r = self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
-                    pyrpr.MATERIAL_INPUT_VALUE: pyrpr.MATERIAL_NODE_LOOKUP_VERTEX_VALUE0
-                })
-                g = self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
-                    pyrpr.MATERIAL_INPUT_VALUE: pyrpr.MATERIAL_NODE_LOOKUP_VERTEX_VALUE1
-                })
-                b = self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
-                    pyrpr.MATERIAL_INPUT_VALUE: pyrpr.MATERIAL_NODE_LOOKUP_VERTEX_VALUE2
-                })
-                a = self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
-                    pyrpr.MATERIAL_INPUT_VALUE: pyrpr.MATERIAL_NODE_LOOKUP_VERTEX_VALUE3
-                })
-                return r.combine4(g, b, a)
-
-            else:
+            if self.node.lookup_type != 'VERTEX_COLOR':
                 return self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
                     pyrpr.MATERIAL_INPUT_VALUE: self.lookup_type_to_id[self.node.lookup_type]
                 })
+            r = self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
+                pyrpr.MATERIAL_INPUT_VALUE: pyrpr.MATERIAL_NODE_LOOKUP_VERTEX_VALUE0
+            })
+            g = self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
+                pyrpr.MATERIAL_INPUT_VALUE: pyrpr.MATERIAL_NODE_LOOKUP_VERTEX_VALUE1
+            })
+            b = self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
+                pyrpr.MATERIAL_INPUT_VALUE: pyrpr.MATERIAL_NODE_LOOKUP_VERTEX_VALUE2
+            })
+            a = self.create_node(pyrpr.MATERIAL_NODE_INPUT_LOOKUP, {
+                pyrpr.MATERIAL_INPUT_VALUE: pyrpr.MATERIAL_NODE_LOOKUP_VERTEX_VALUE3
+            })
+            return r.combine4(g, b, a)
 
         def export_hybrid(self):
             if self.node.lookup_type in ('UV', 'UV1'):  # Only UV supported in Hybrid for now
@@ -1097,10 +1092,9 @@ class RPRShaderNodeBlend(RPRShaderNode):
 
             if isinstance(weight.data, float):
                 socket_key = 1 if math.isclose(weight.data, 0.0) else \
-                             2 if math.isclose(weight.data, 1.0) else None
+                                     2 if math.isclose(weight.data, 1.0) else None
                 if socket_key:
-                    shader = self.get_input_link(socket_key)
-                    if shader:
+                    if shader := self.get_input_link(socket_key):
                         return shader
 
                     return self.create_node(pyrpr.MATERIAL_NODE_DIFFUSE)
@@ -1127,11 +1121,10 @@ class RPRShaderNodeBlend(RPRShaderNode):
 
             if isinstance(weight.data, float):
                 socket_key = 1 if math.isclose(weight.data, 0.0) else \
-                             2 if math.isclose(weight.data, 1.0) else None
+                                     2 if math.isclose(weight.data, 1.0) else None
 
                 if socket_key:
-                    shader = self.get_input_link(socket_key)
-                    if shader:
+                    if shader := self.get_input_link(socket_key):
                         return shader
 
                     return self.create_node(pyrpr.MATERIAL_NODE_UBERV2, {
@@ -1416,12 +1409,12 @@ class RPRValueNode_Math(RPRShaderNode):
         }),
     ])
 
-    def get_operations_items(settings):
+    def get_operations_items(self):
         """ Convert operations settings to EnumProperty items list, using name as description """
         items = []
-        indices = list(settings)
-        for k in sorted(settings, key=lambda k: settings[k]['name']):
-            name = settings[k]['name']
+        indices = list(self)
+        for k in sorted(self, key=lambda k: self[k]['name']):
+            name = self[k]['name']
             items.append((k, name, name, indices.index(k)))
         return items
 
@@ -1470,7 +1463,7 @@ class RPRValueNode_Math(RPRShaderNode):
 
     def draw_label(self):
         info = self.operations_settings[self.operation]
-        return self.bl_label + ' - ' + info['name']
+        return f'{self.bl_label} - ' + info['name']
 
     class Exporter(NodeParser):
         def export(self):
@@ -1708,8 +1701,7 @@ class RPRShaderNodeToon(RPRShaderNode):
                 pyrpr.MATERIAL_INPUT_ROUGHNESS: self.get_input_value('Roughness'),
             })
 
-            normal = self.get_input_link('Normal')
-            if normal:
+            if normal := self.get_input_link('Normal'):
                 toon_shader.set_input(pyrpr.MATERIAL_INPUT_NORMAL, normal)
 
             # build the toon ramp node
@@ -1752,17 +1744,13 @@ class RPRShaderNodeToon(RPRShaderNode):
 
             if self.node.linked_light:
                 # now we can't set Area light (emissive object) to it but only light object
-                if self.node.linked_light.data.type != 'AREA':
-                    # we sync light here because there are cases
-                    # the light isn't in rpr_context yet
-                    rpr_light = light.sync(self.rpr_context, self.node.linked_light)
-                    if rpr_light:
-                        toon_shader.set_input(pyrpr.MATERIAL_INPUT_LIGHT, rpr_light)
-
-                else:
+                if self.node.linked_light.data.type == 'AREA':
                     log.warn(
                         "Ignoring unsupported Light type", self.node.linked_light.data.type
                     )
+
+                elif rpr_light := light.sync(self.rpr_context, self.node.linked_light):
+                    toon_shader.set_input(pyrpr.MATERIAL_INPUT_LIGHT, rpr_light)
 
             transparency = self.get_input_value('Transparency')
             if not transparency.is_zero():

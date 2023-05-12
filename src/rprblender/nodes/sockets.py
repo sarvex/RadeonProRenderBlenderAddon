@@ -267,19 +267,18 @@ class RPRSocketValue(RPRNodeSocket):
         """ Display different UI for color, vector and float display types """
         if self.is_linked or self.is_output:
             layout.label(text=self.name)
+        elif self.display_type == 'COLOR':
+            layout.prop(self, 'value_color', text='')
+            layout.label(text=self.name)
+        elif self.display_type == 'FLOAT':
+            layout.prop(self, 'value_float', text=self.name)
         else:
-            if self.display_type == 'COLOR':
-                layout.prop(self, 'value_color', text='')
-                layout.label(text=self.name)
-            elif self.display_type == 'FLOAT':
-                layout.prop(self, 'value_float', text=self.name)
-            else:
-                col = layout.column()
-                row = col.row()
-                row.label(text=self.name)
-                row.prop(self, 'show', text='', icon='TRIA_UP' if self.show else 'TRIA_DOWN')
-                if self.show:
-                    col.prop(self, 'value_vector4', text='')
+            col = layout.column()
+            row = col.row()
+            row.label(text=self.name)
+            row.prop(self, 'show', text='', icon='TRIA_UP' if self.show else 'TRIA_DOWN')
+            if self.show:
+                col.prop(self, 'value_vector4', text='')
 
     def draw_color(self, context, node):
         return COLORS.get(self.display_type.lower(), COLORS['float'])

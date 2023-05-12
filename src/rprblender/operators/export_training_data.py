@@ -126,9 +126,7 @@ class RPR_EXPORT_OP_export_training_data(RPR_Operator):
             frame_start = self.frame_start
             frame_end = self.frame_end
 
-        if frame_end < frame_start:
-            frame_end = frame_start
-
+        frame_end = max(frame_end, frame_start)
         log(f"Directory path: {self.output_path}")
 
         for frame in range(frame_start, frame_end + 1):
@@ -212,6 +210,6 @@ class RPR_EXPORT_OP_export_training_data(RPR_Operator):
                     log(f"Finish render, camera: {cam.name}")
             rpr_context.clear_scene()
 
-        log.info(f"Finish render for all cameras")
+        log.info("Finish render for all cameras")
 
         return {'FINISHED'}
